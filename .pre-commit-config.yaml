@@ -1,0 +1,33 @@
+# Pre-commit hooks for toby.
+#
+# One-time setup (uv is already installed on this machine):
+#   uv tool install pre-commit
+#   pre-commit install
+#
+# The clang-format hook below downloads its own pinned clang-format binary, so
+# you do NOT need a system clang-format for formatting to work.
+#
+# clang-tidy is intentionally NOT a pre-commit hook: it needs a compile database
+# and a full build, which is too slow for every commit. Run it via the
+# `clang-tidy` CMake preset or in CI instead.
+
+minimum_pre_commit_version: "3.5.0"
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+      - id: check-merge-conflict
+
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v18.1.8
+    hooks:
+      - id: clang-format
+        types_or: [c++, c]

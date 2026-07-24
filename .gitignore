@@ -1,0 +1,31 @@
+# Build output
+/build/
+/out/
+/cmake-build-*/
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.exe
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+CTestTestfile.cmake
+_deps/
+
+# Editors / tooling
+.cache/
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Sanitizer / profiling artifacts
+*.profraw
+*.profdata
+callgrind.out.*
+perf.data*

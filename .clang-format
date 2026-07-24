@@ -1,0 +1,25 @@
+# clang-format configuration for toby.
+# Based on the LLVM style with a wider column limit and a few readability tweaks.
+# Run: clang-format -i <files>   (or let the pre-commit hook do it)
+---
+Language: Cpp
+BasedOnStyle: LLVM
+Standard: c++20
+ColumnLimit: 100
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+AccessModifierOffset: -4
+NamespaceIndentation: None
+FixNamespaceComments: true
+PointerAlignment: Left
+ReferenceAlignment: Left
+AlignAfterOpenBracket: Align
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+BreakBeforeBraces: Attach
+IncludeBlocks: Regroup
+SortIncludes: CaseSensitive
+SeparateDefinitionBlocks: Always
+SpaceAfterTemplateKeyword: true

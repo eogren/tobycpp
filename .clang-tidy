@@ -1,0 +1,47 @@
+# clang-tidy configuration for toby.
+# Enabled via the `clang-tidy` CMake preset (TOBY_ENABLE_CLANG_TIDY=ON), which
+# runs tidy on first-party targets during the build. You can also run it
+# standalone against the compile database:
+#   clang-tidy -p build/clang-tidy src/core/version.cpp
+---
+Checks: >
+  -*,
+  bugprone-*,
+  cppcoreguidelines-*,
+  performance-*,
+  modernize-*,
+  readability-*,
+  portability-*,
+  concurrency-*,
+  misc-*,
+  -modernize-use-trailing-return-type,
+  -readability-magic-numbers,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-avoid-non-const-global-variables,
+  -misc-non-private-member-variables-in-classes,
+  -readability-identifier-length
+
+# Keep the build green while learning; flip to a check list here once the
+# codebase stabilizes if you want hard failures on specific checks.
+WarningsAsErrors: ''
+
+# Only analyze our own headers, not FetchContent/system headers.
+HeaderFilterRegex: '.*/(src|include|tests)/.*'
+
+CheckOptions:
+  - key: readability-identifier-naming.NamespaceCase
+    value: lower_case
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.StructCase
+    value: CamelCase
+  - key: readability-identifier-naming.FunctionCase
+    value: lower_case
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case
+  - key: readability-identifier-naming.PrivateMemberSuffix
+    value: '_'
+  - key: readability-identifier-naming.ConstexprVariableCase
+    value: lower_case
+  - key: readability-identifier-naming.EnumCase
+    value: CamelCase
