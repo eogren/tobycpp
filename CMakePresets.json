@@ -15,70 +15,58 @@
       "name": "clang-base",
       "hidden": true,
       "inherits": "base",
-      "description": "Clang 19 with libc++ (the primary toolchain).",
+      "description": "Clang 20 with libc++ (the toolchain).",
       "cacheVariables": {
-        "CMAKE_CXX_COMPILER": "clang++-19",
+        "CMAKE_CXX_COMPILER": "clang++-20",
         "CMAKE_CXX_FLAGS": "-stdlib=libc++",
         "CMAKE_EXE_LINKER_FLAGS": "-stdlib=libc++",
         "CMAKE_SHARED_LINKER_FLAGS": "-stdlib=libc++",
         "TOBY_WARNINGS_AS_ERRORS": "ON"
       }
     },
-    {
-      "name": "gcc-base",
-      "hidden": true,
-      "inherits": "base",
-      "description": "GCC 14 with libstdc++ (secondary / cross-check toolchain).",
-      "cacheVariables": {
-        "CMAKE_CXX_COMPILER": "g++-14"
-      }
-    },
 
     {
       "name": "clang-debug",
-      "displayName": "Clang 19 + libc++ Debug (primary)",
+      "displayName": "Clang 20 + libc++ Debug",
       "inherits": "clang-base",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "TOBY_HARDENING": "extensive"
+      }
     },
     {
       "name": "clang-release",
-      "displayName": "Clang 19 + libc++ RelWithDebInfo",
+      "displayName": "Clang 20 + libc++ RelWithDebInfo",
       "inherits": "clang-base",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "TOBY_HARDENING": "fast"
+      }
     },
     {
       "name": "clang-tidy",
-      "displayName": "Clang 19 Debug + clang-tidy",
+      "displayName": "Clang 20 Debug + clang-tidy",
       "inherits": "clang-debug",
       "cacheVariables": { "TOBY_ENABLE_CLANG_TIDY": "ON" }
     },
     {
       "name": "clang-asan",
-      "displayName": "Clang 19 Debug + Address/UB sanitizers",
+      "displayName": "Clang 20 Debug + Address/UB sanitizers",
       "inherits": "clang-debug",
       "cacheVariables": {
         "TOBY_SANITIZE_ADDRESS": "ON",
-        "TOBY_SANITIZE_UNDEFINED": "ON"
+        "TOBY_SANITIZE_UNDEFINED": "ON",
+        "TOBY_HARDENING": "debug"
       }
     },
     {
       "name": "clang-tsan",
-      "displayName": "Clang 19 Debug + ThreadSanitizer",
+      "displayName": "Clang 20 Debug + ThreadSanitizer",
       "inherits": "clang-debug",
-      "cacheVariables": { "TOBY_SANITIZE_THREAD": "ON" }
-    },
-
-    {
-      "name": "gcc-debug",
-      "displayName": "GCC 14 Debug (cross-check)",
-      "inherits": "gcc-base",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
-    },
-    {
-      "name": "gcc-release",
-      "displayName": "GCC 14 RelWithDebInfo",
-      "inherits": "gcc-base",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo" }
+      "cacheVariables": {
+        "TOBY_SANITIZE_THREAD": "ON",
+        "TOBY_HARDENING": "debug"
+      }
     }
   ],
   "buildPresets": [
@@ -86,9 +74,7 @@
     { "name": "clang-release", "configurePreset": "clang-release" },
     { "name": "clang-tidy",    "configurePreset": "clang-tidy" },
     { "name": "clang-asan",    "configurePreset": "clang-asan" },
-    { "name": "clang-tsan",    "configurePreset": "clang-tsan" },
-    { "name": "gcc-debug",     "configurePreset": "gcc-debug" },
-    { "name": "gcc-release",   "configurePreset": "gcc-release" }
+    { "name": "clang-tsan",    "configurePreset": "clang-tsan" }
   ],
   "testPresets": [
     {
@@ -99,7 +85,6 @@
     },
     { "name": "clang-debug", "configurePreset": "clang-debug", "inherits": "base" },
     { "name": "clang-asan",  "configurePreset": "clang-asan",  "inherits": "base" },
-    { "name": "clang-tsan",  "configurePreset": "clang-tsan",  "inherits": "base" },
-    { "name": "gcc-debug",   "configurePreset": "gcc-debug",   "inherits": "base" }
+    { "name": "clang-tsan",  "configurePreset": "clang-tsan",  "inherits": "base" }
   ]
 }

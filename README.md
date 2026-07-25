@@ -10,22 +10,20 @@ Socratic prompt skeleton.
 ## Requirements
 
 - CMake ≥ 3.25, Ninja
-- **Primary:** Clang 19 + libc++ (`clang-19`, `libc++-19-dev`)
-- **Secondary:** GCC 14 + libstdc++ (`g++-14`) — cross-check toolchain
+- Clang 20 + libc++ (`clang-20`, `libc++-20-dev`)
 - C++23 (uses `std::print`)
 
 On Ubuntu 24.04 (Noble):
 
 ```bash
-sudo apt install clang-19 clang-tidy-19 clang-format-19 \
-                 libc++-19-dev libc++abi-19-dev lld-19 g++-14 \
+sudo apt install clang-20 clang-tidy-20 clang-format-20 \
+                 libc++-20-dev libc++abi-20-dev lld-20 \
                  cmake ninja-build
 ```
 
 ## Build & test
 
 ```bash
-# Primary toolchain
 cmake --preset clang-debug
 cmake --build --preset clang-debug
 ctest --preset clang-debug
@@ -35,7 +33,7 @@ ctest --preset clang-debug
 ```
 
 Other presets: `clang-release`, `clang-asan` (Address+UB), `clang-tsan`
-(Thread), `clang-tidy` (static analysis), `gcc-debug`, `gcc-release`.
+(Thread), `clang-tidy` (static analysis).
 Run `cmake --list-presets` to see them all.
 
 ## Layout

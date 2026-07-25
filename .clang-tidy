@@ -28,6 +28,12 @@ WarningsAsErrors: ''
 # Only analyze our own headers, not FetchContent/system headers.
 HeaderFilterRegex: '.*/(src|include|tests)/.*'
 
+# HeaderFilterRegex alone is not enough: FetchContent unpacks Catch2 into
+# build/<preset>/_deps/catch2-src/src/..., which matches the '/src/' branch
+# above and buries first-party findings under hundreds of Catch2 warnings.
+# (Requires clang-tidy >= 19; the build pins tidy to the compiler's version.)
+ExcludeHeaderFilterRegex: '.*/_deps/.*'
+
 CheckOptions:
   - key: readability-identifier-naming.NamespaceCase
     value: lower_case

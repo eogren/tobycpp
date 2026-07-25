@@ -24,7 +24,7 @@ if(TOBY_SANITIZE_THREAD)
 endif()
 
 if(_toby_sanitizers)
-  if(NOT (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU"))
+  if(NOT (CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
     message(WARNING "toby: sanitizers requested but unsupported for this compiler.")
   else()
     list(JOIN _toby_sanitizers "," _toby_sanitizer_arg)

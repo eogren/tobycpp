@@ -1,0 +1,10 @@
+# clangd configuration for toby.
+#
+# clangd's `--clang-tidy` flag does NOT run `misc-include-cleaner` -- clangd
+# disables that check and substitutes its own native IncludeCleaner, which
+# ships with missing-include diagnostics OFF by default. That is why "you used
+# std::array and never included <array>" is invisible in the editor even though
+# `clang-tidy-20` reports it from the command line.
+Diagnostics:
+  MissingIncludes: Strict
+  UnusedIncludes: Strict

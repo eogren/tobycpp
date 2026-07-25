@@ -1,0 +1,17 @@
+# clang-tidy overrides for test code.
+#
+# Everything here suppresses a diagnostic caused by Catch2's macro expansion,
+# not by anything written in these files. Scoped to tests/ so first-party
+# library code keeps the full check list from the root .clang-tidy.
+InheritParentConfig: true
+
+Checks: >
+  -cppcoreguidelines-avoid-do-while,
+  -misc-use-anonymous-namespace,
+  -readability-function-cognitive-complexity
+
+# Why each one:
+#   avoid-do-while              CHECK/REQUIRE expand to do { ... } while(false).
+#   use-anonymous-namespace     TEST_CASE emits a file-static dummyFunctionN.
+#   function-cognitive-complexity  SECTION nesting inflates the score of a
+#                               TEST_CASE that is flat and readable as written.

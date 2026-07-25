@@ -78,14 +78,11 @@ the mode to the question: **concepts → questions; plumbing → answers.**
 ## 4. Build & test commands
 
 ```bash
-# Configure + build (primary toolchain: Clang 19 + libc++)
+# Configure + build (Clang 20 + libc++)
 cmake --preset clang-debug && cmake --build --preset clang-debug
 
 # Run the tests
 ctest --preset clang-debug
-
-# Cross-check with the secondary toolchain (GCC 14 + libstdc++)
-cmake --preset gcc-debug && cmake --build --preset gcc-debug && ctest --preset gcc-debug
 
 # Sanitizers (Address+UB, then Thread)
 cmake --preset clang-asan && ctest --preset clang-asan
@@ -97,7 +94,7 @@ cmake --preset clang-tidy && cmake --build --preset clang-tidy
 
 ## 5. Conventions
 
-- C++23, no compiler extensions. `std::print`/`std::println` are fine (libc++/libstdc++14+).
+- C++23, no compiler extensions. `std::print`/`std::println` are fine (libc++).
 - Namespace `toby::`, engine under `toby::core::`.
 - Formatting is enforced by `.clang-format` via a pre-commit hook — don't
   hand-format; let the hook do it.
