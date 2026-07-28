@@ -29,7 +29,7 @@ namespace {
 // Sorted by id so successive runs print the same thing: RawVocab::vocab is an
 // unordered_map, and iterating it raw would reshuffle the sample every run and
 // make two dumps impossible to diff.
-void print_sample_tokens(const toby::tokenize::RawVocab& loaded, const std::size_t count) {
+void print_sample_tokens(const toby::tokenize::detail::RawVocab& loaded, const std::size_t count) {
     std::vector<std::pair<std::int32_t, std::string_view>> by_id;
     by_id.reserve(loaded.vocab.size());
     for (const auto& [token, id] : loaded.vocab) {
@@ -42,7 +42,7 @@ void print_sample_tokens(const toby::tokenize::RawVocab& loaded, const std::size
     }
 }
 
-void dump(const toby::tokenize::RawVocab& loaded) {
+void dump(const toby::tokenize::detail::RawVocab& loaded) {
     std::println("  vocab entries : {}", loaded.vocab.size());
     std::println("  merge rules   : {}", loaded.merges.size());
     std::println("  added tokens  : {}", loaded.added_tokens.size());

@@ -19,9 +19,9 @@
 //   * HuggingFace `tokenizer.json`: one file holding vocab, merges, added tokens
 //     and the pre-tokenizer spec. This is what Llama 3 and Qwen ship.
 //
-// Both produce a `RawVocab`. Same merge engine, different parsers -- which is
-// the whole reason these are two free functions returning one type rather than
-// a loader interface with virtual dispatch.
+// Both produce a `detail::RawVocab`. Same merge engine, different parsers --
+// which is the whole reason these are two free functions returning one type
+// rather than a loader interface with virtual dispatch.
 //
 // -----------------------------------------------------------------------------
 // WHAT THIS DELIBERATELY DOES NOT DO
@@ -43,6 +43,12 @@
 //
 // Concretely: `vocab` keys here are NOT the byte sequences you will look up
 // during merging. Decode them once at load and build your own lookup table.
+//
+// That decode is also why the parsed form lives in `detail`: it is an
+// intermediate, not the vocabulary a tokenizer should be handed. When the decode
+// step exists, the public type becomes a `Vocab` whose keys are real bytes, and
+// these loaders become an implementation detail of building it. `detail` says
+// "you may reach in, but do not build on this" until then.
 // -----------------------------------------------------------------------------
 
 namespace toby::tokenize {
@@ -57,6 +63,11 @@ class VocabLoadError : public std::runtime_error {
 public:
     using std::runtime_error::runtime_error;
 };
+
+/// The parsed-but-not-yet-decoded layer. See the header comment: everything here
+/// is spelled in the file's byte<->unicode alphabet, which is not what a merge
+/// engine wants to look up.
+namespace detail {
 
 /// A token added outside the BPE vocabulary proper.
 ///
@@ -100,12 +111,14 @@ struct RawVocab {
     std::string pretokenizer_pattern;
 };
 
+} // namespace detail
+
 /// Load a GPT-2 style pair. `merges_txt` is ranked by line order; a leading
 /// `#version:` line is ignored.
 ///
 /// Throws VocabLoadError.
-[[nodiscard]] RawVocab load_gpt2_vocab(const std::filesystem::path& vocab_json,
-                                       const std::filesystem::path& merges_txt);
+[[nodiscard]] detail::RawVocab load_gpt2_vocab(const std::filesystem::path& vocab_json,
+                                               const std::filesystem::path& merges_txt);
 
 /// Load a HuggingFace `tokenizer.json` (Llama 3, Qwen, and anything else built
 /// with the `tokenizers` library).
@@ -116,6 +129,6 @@ struct RawVocab {
 /// Throws VocabLoadError. In particular it throws when `model.type` is not BPE:
 /// a SentencePiece Unigram file (Llama 2, Gemma) parses as JSON perfectly well
 /// and would otherwise load as a vocabulary with no merges.
-[[nodiscard]] RawVocab load_tokenizer_json(const std::filesystem::path& tokenizer_json);
+[[nodiscard]] detail::RawVocab load_tokenizer_json(const std::filesystem::path& tokenizer_json);
 
 } // namespace toby::tokenize

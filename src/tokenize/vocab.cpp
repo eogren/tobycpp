@@ -23,9 +23,6 @@ namespace {
 using nlohmann::json;
 using toby::tokenize::VocabLoadError;
 
-// Slurp the whole file. Vocabularies are a few MB and we parse them in one shot
-// anyway, so streaming buys nothing and costs error-reporting clarity.
-//
 // Opened in binary mode deliberately: merges.txt is line-oriented, but letting
 // the platform rewrite line endings would silently corrupt a token whose bytes
 // happen to map to \r. Trailing \r is stripped explicitly below instead.
@@ -48,15 +45,12 @@ json parse_json(const std::filesystem::path& path) {
     try {
         return json::parse(text);
     } catch (const json::exception& e) {
-        // Rethrown as our type so a caller needs to know about exactly one
-        // exception class, not nlohmann's hierarchy as well.
         throw VocabLoadError{std::format("{}: malformed JSON: {}", path.string(), e.what())};
     }
 }
 
 // Token ids index into the embedding matrix, so they must be non-negative and
-// must fit the type we hand back. A file that violates that is corrupt, and
-// finding out here beats finding out via an out-of-bounds row lookup later.
+// must fit the type we hand back.
 std::int32_t to_token_id(const json& value, const std::filesystem::path& path,
                          std::string_view what) {
     if (!value.is_number_integer()) {
@@ -92,9 +86,7 @@ parse_vocab_object(const json& vocab, const std::filesystem::path& path) {
 // Split "left right" into its two halves.
 //
 // Splitting on the first space is unambiguous: in the byte<->unicode alphabet a
-// real space is spelled U+0120, so neither half can contain U+0020. That also
-// means a second space is corruption rather than a token containing one, which
-// is why it is rejected instead of folded into the right-hand side.
+// real space is spelled U+0120, so neither half can contain U+0020.
 std::pair<std::string, std::string> split_merge(std::string_view line,
                                                 const std::filesystem::path& path,
                                                 const std::size_t line_number) {
@@ -115,24 +107,8 @@ std::pair<std::string, std::string> split_merge(std::string_view line,
     return {std::string{left}, std::string{right}};
 }
 
-// Pull the pre-tokenizer regex out of a tokenizer.json `pre_tokenizer` node.
-//
-// The node is usually a Sequence whose first element does the regex split and
-// whose second is the ByteLevel mapping, e.g.
-//
-//   {"type": "Sequence", "pretokenizers": [
-//       {"type": "Split", "pattern": {"Regex": "(?i:'s|'t|...)"}, ...},
-//       {"type": "ByteLevel", ...}]}
-//
-// but it can also be a bare Split. Returns the first Regex found, or "" -- a
-// missing pattern is not an error, it just means there is nothing to check the
-// hand-rolled scanner against. A {"String": ...} pattern is skipped: that is a
-// literal delimiter, not a regex, and reporting it as one would be a lie.
-//
-// Walked with an explicit worklist rather than recursion. A tokenizer.json is
-// operator-supplied rather than user-supplied, so this is not an attack surface
-// -- but "parser you can blow the stack on by nesting Sequences" is still not a
-// thing to ship in a server, and the iterative form costs nothing here.
+// Find the first Regex pattern in a Split or nested Sequence.
+// Literal String patterns are intentionally ignored.
 std::string find_split_regex(const json& root) {
     // Depth is 2 in every real file; this only exists so a pathological one
     // terminates rather than walking forever.
@@ -179,14 +155,14 @@ std::string find_split_regex(const json& root) {
     return {};
 }
 
-std::vector<toby::tokenize::AddedToken> parse_added_tokens(const json& root,
-                                                           const std::filesystem::path& path) {
+std::vector<toby::tokenize::detail::AddedToken>
+parse_added_tokens(const json& root, const std::filesystem::path& path) {
     const auto added = root.find("added_tokens");
     if (added == root.end() || !added->is_array()) {
         return {};
     }
 
-    std::vector<toby::tokenize::AddedToken> out;
+    std::vector<toby::tokenize::detail::AddedToken> out;
     out.reserve(added->size());
 
     for (const auto& entry : *added) {
@@ -219,9 +195,9 @@ namespace toby::tokenize {
 // at parse time with the offending filename in the message, so a wrapper type per
 // path would be ceremony without a payoff.
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-RawVocab load_gpt2_vocab(const std::filesystem::path& vocab_json,
-                         const std::filesystem::path& merges_txt) {
-    RawVocab out;
+detail::RawVocab load_gpt2_vocab(const std::filesystem::path& vocab_json,
+                                 const std::filesystem::path& merges_txt) {
+    detail::RawVocab out;
     out.vocab = parse_vocab_object(parse_json(vocab_json), vocab_json);
 
     const std::string merges = read_file(merges_txt);
@@ -258,7 +234,7 @@ RawVocab load_gpt2_vocab(const std::filesystem::path& vocab_json,
     return out;
 }
 
-RawVocab load_tokenizer_json(const std::filesystem::path& tokenizer_json) {
+detail::RawVocab load_tokenizer_json(const std::filesystem::path& tokenizer_json) {
     const json root = parse_json(tokenizer_json);
 
     const auto model = root.find("model");
@@ -277,7 +253,7 @@ RawVocab load_tokenizer_json(const std::filesystem::path& tokenizer_json) {
             tokenizer_json.string(), type)};
     }
 
-    RawVocab out;
+    detail::RawVocab out;
 
     const auto vocab = model->find("vocab");
     if (vocab == model->end()) {

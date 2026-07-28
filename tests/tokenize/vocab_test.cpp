@@ -18,8 +18,8 @@
 
 using toby::tokenize::load_gpt2_vocab;
 using toby::tokenize::load_tokenizer_json;
-using toby::tokenize::RawVocab;
 using toby::tokenize::VocabLoadError;
+using toby::tokenize::detail::RawVocab;
 
 namespace {
 
