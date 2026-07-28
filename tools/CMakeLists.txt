@@ -14,3 +14,16 @@ target_link_libraries(pretokenize_dump
     toby::simd)
 
 toby_enable_tidy(pretokenize_dump)
+
+# vocab_dump prints what the vocabulary loaders parsed out of a real file.
+# Pair it with tools/fetch_vocab.py, which downloads the files to point it at.
+add_executable(vocab_dump vocab_dump.cpp)
+
+target_link_libraries(vocab_dump
+  PRIVATE
+    toby::tokenize
+    toby::warnings
+    toby::sanitizers
+    toby::simd)
+
+toby_enable_tidy(vocab_dump)

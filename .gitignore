@@ -24,6 +24,10 @@ _deps/
 *.swp
 .DS_Store
 
+# Tokenizer vocabularies fetched by tools/fetch_vocab.py. Large (a tokenizer.json
+# is 10MB+) and reproducible from that script, so they stay out of git.
+/vocab/
+
 # Sanitizer / profiling artifacts
 *.profraw
 *.profdata
