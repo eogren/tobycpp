@@ -17,9 +17,16 @@ target_include_directories(toby_tokenize
 # nlohmann_json is PRIVATE on purpose: vocab.hpp exposes only std types, so the
 # JSON library stays an implementation detail of vocab.cpp and never leaks into
 # a consumer's include path. That is what makes swapping it a local change.
+#
+# Boost::unordered is PRIVATE for the same reason, and it is a choice worth
+# revisiting rather than a default: putting `boost::unordered_flat_map` in
+# RawVocab's public fields would force this to PUBLIC and put Boost's headers on
+# the include path of everything that touches a vocabulary. Keeping it private
+# means the map is a detail of how vocab.cpp builds its lookups.
 target_link_libraries(toby_tokenize
   PRIVATE
     nlohmann_json::nlohmann_json
+    Boost::unordered
     toby::warnings
     toby::sanitizers
     toby::simd)

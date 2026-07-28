@@ -76,3 +76,76 @@ FetchContent_Declare(nlohmann_json
   EXCLUDE_FROM_ALL)
 
 FetchContent_MakeAvailable(nlohmann_json)
+
+# ---------------------------------------------------------------------------
+# Boost.Unordered -- open-addressed hash containers.
+#
+# We want `boost::unordered_flat_map`, which is a genuinely different data
+# structure from `std::unordered_map` rather than a tuned version of it. The
+# standard's container is specified in a way that forces closed addressing:
+# `bucket()`/`begin(n)` expose buckets, and reference stability across rehash is
+# guaranteed. That mandates a node per element, so a lookup is a modulo, a
+# pointer chase to the bucket head, and then a linked-list walk with a cache miss
+# per hop. Boost's flat map stores elements inline in one array with SIMD-scanned
+# metadata; the common lookup is one cache line. The cost you accept is that it
+# invalidates references on rehash and its `value_type` is `pair<K, V>`, not
+# `pair<const K, V>` -- which is precisely why it cannot be spelled as a
+# conforming `std::unordered_map` and has to be a separate type.
+#
+# Whether that wins here is an open question, not a given: the flat map's edge is
+# largest on lookup-heavy workloads with small keys, and vocab keys are short
+# `std::string`s that mostly fit in the SSO buffer, so the element array stays
+# dense. Measure before believing it.
+#
+# ON SIZE: this archive is ~104MB compressed and ~700MB extracted -- for a
+# header-only map. `BOOST_INCLUDE_LIBRARIES` below limits what gets *configured*
+# (only Unordered and its transitive dependencies get add_subdirectory'd, so the
+# configure stays quick), but the download is all-or-nothing. If that ever grates,
+# `ankerl::unordered_dense` is a single header with comparable benchmarks and the
+# same open-addressing design; the swap is local to whoever includes the map.
+#
+# We use the release archive rather than the git superproject on purpose: the
+# superproject is ~200 submodules, and a shallow clone of it is neither shallow
+# nor quick. The archive is pinned by SHA256, which also makes this the only
+# dependency here that is genuinely reproducible -- a git tag can be moved.
+# ---------------------------------------------------------------------------
+set(TOBY_BOOST_VERSION "1.91.0-1" CACHE STRING "Boost release archive to fetch")
+set(TOBY_BOOST_SHA256
+    "cc5dc5006ecbdf0051f90979be31b4eee5987d9ae14ae9fb9c03cfa43fa3cdad"
+    CACHE STRING "SHA256 of the Boost CMake release archive")
+
+# The list of Boost libraries to build. Transitive dependencies (Assert, Config,
+# ContainerHash, Core, Mp11, ThrowException, ...) are resolved automatically --
+# do NOT list them by hand. Keep this list minimal: every entry is another
+# subdirectory in every configure.
+set(BOOST_INCLUDE_LIBRARIES unordered)
+set(BOOST_ENABLE_CMAKE ON)
+
+# Share the tarball and the extracted tree across presets.
+#
+# By default FetchContent puts everything under `${CMAKE_BINARY_DIR}/_deps`, which
+# is per-preset -- so clang-debug, clang-asan, clang-tsan and clang-tidy would each
+# pull 104MB and each keep their own 700MB copy. Pointing SOURCE_DIR and DOWNLOAD_DIR
+# at one shared location under build/ fixes both: the download step hashes the
+# existing archive and skips the fetch, and every preset extracts to the same tree.
+#
+# Note this deliberately does NOT move the *binary* dir (which is what setting
+# FETCHCONTENT_BASE_DIR globally would do). Boost.Unordered is header-only, so its
+# binary dir is empty today -- but sharing build trees across presets that disagree
+# about sanitizers and hardening is exactly the kind of thing that produces a
+# baffling link error two months from now. Source is shared; build stays per-preset.
+#
+# The one caveat: configuring two presets *concurrently* can race on the extract.
+# Configure them one at a time, or delete build/_shared and retry.
+set(TOBY_DEPS_CACHE ${CMAKE_SOURCE_DIR}/build/_shared)
+
+FetchContent_Declare(Boost
+  URL https://github.com/boostorg/boost/releases/download/boost-${TOBY_BOOST_VERSION}/boost-${TOBY_BOOST_VERSION}-cmake.tar.xz
+  URL_HASH SHA256=${TOBY_BOOST_SHA256}
+  DOWNLOAD_DIR ${TOBY_DEPS_CACHE}/downloads
+  SOURCE_DIR   ${TOBY_DEPS_CACHE}/boost-src
+  DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+  SYSTEM
+  EXCLUDE_FROM_ALL)
+
+FetchContent_MakeAvailable(Boost)
