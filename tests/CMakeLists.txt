@@ -36,6 +36,10 @@ target_compile_definitions(toby_tests
   PRIVATE
     TOBY_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 
+# Loader tests intentionally exercise the private parsed representation until
+# the decoded public Vocab exists.
+target_include_directories(toby_tests PRIVATE ${CMAKE_SOURCE_DIR}/src/tokenize)
+
 # Lint first-party test code too (but never Catch2's own sources).
 toby_enable_tidy(toby_tests)
 

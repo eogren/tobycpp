@@ -1,5 +1,7 @@
 #include "toby/tokenize/vocab.hpp"
 
+#include "vocab_detail.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -251,15 +253,15 @@ static_assert(all_unique(byte_to_printable_map()));
 static_assert(byte_to_printable_map()[0x20] == 288);
 } // namespace
 
-namespace toby::tokenize {
+namespace toby::tokenize::detail {
 
 // Two paths in a fixed order is the honest signature; swapping them fails loudly
 // at parse time with the offending filename in the message, so a wrapper type per
 // path would be ceremony without a payoff.
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-detail::RawVocab load_gpt2_vocab(const std::filesystem::path& vocab_json,
-                                 const std::filesystem::path& merges_txt) {
-    detail::RawVocab out;
+RawVocab load_gpt2_vocab(const std::filesystem::path& vocab_json,
+                         const std::filesystem::path& merges_txt) {
+    RawVocab out;
     out.vocab = parse_vocab_object(parse_json(vocab_json), vocab_json);
 
     const std::string merges = read_file(merges_txt);
@@ -296,7 +298,7 @@ detail::RawVocab load_gpt2_vocab(const std::filesystem::path& vocab_json,
     return out;
 }
 
-detail::RawVocab load_tokenizer_json(const std::filesystem::path& tokenizer_json) {
+RawVocab load_tokenizer_json(const std::filesystem::path& tokenizer_json) {
     const json root = parse_json(tokenizer_json);
 
     const auto model = root.find("model");
@@ -315,7 +317,7 @@ detail::RawVocab load_tokenizer_json(const std::filesystem::path& tokenizer_json
             tokenizer_json.string(), type)};
     }
 
-    detail::RawVocab out;
+    RawVocab out;
 
     const auto vocab = model->find("vocab");
     if (vocab == model->end()) {
@@ -358,4 +360,4 @@ detail::RawVocab load_tokenizer_json(const std::filesystem::path& tokenizer_json
     return out;
 }
 
-} // namespace toby::tokenize
+} // namespace toby::tokenize::detail

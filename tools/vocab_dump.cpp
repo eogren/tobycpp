@@ -11,6 +11,7 @@
 // the sample entries print raw, so a space really does show up as "Ġ".
 
 #include "toby/tokenize/vocab.hpp"
+#include "vocab_detail.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -79,13 +80,13 @@ void dump(const toby::tokenize::detail::RawVocab& loaded) {
 int run(const std::span<const std::string_view> args) {
     if (args.size() == 4 && args[1] == "gpt2") {
         std::println("gpt2: {} + {}", args[2], args[3]);
-        dump(toby::tokenize::load_gpt2_vocab(args[2], args[3]));
+        dump(toby::tokenize::detail::load_gpt2_vocab(args[2], args[3]));
         return 0;
     }
 
     if (args.size() == 3 && args[1] == "hf") {
         std::println("hf: {}", args[2]);
-        dump(toby::tokenize::load_tokenizer_json(args[2]));
+        dump(toby::tokenize::detail::load_tokenizer_json(args[2]));
         return 0;
     }
 

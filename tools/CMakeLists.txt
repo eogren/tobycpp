@@ -19,6 +19,8 @@ toby_enable_tidy(pretokenize_dump)
 # Pair it with tools/fetch_vocab.py, which downloads the files to point it at.
 add_executable(vocab_dump vocab_dump.cpp)
 
+target_include_directories(vocab_dump PRIVATE ${CMAKE_SOURCE_DIR}/src/tokenize)
+
 target_link_libraries(vocab_dump
   PRIVATE
     toby::tokenize

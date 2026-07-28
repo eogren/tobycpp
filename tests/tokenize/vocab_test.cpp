@@ -1,4 +1,5 @@
 #include "toby/tokenize/vocab.hpp"
+#include "vocab_detail.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
@@ -16,9 +17,9 @@
 // vocab.json is ~1MB and would make a failure unreadable; every branch worth
 // testing is reachable from ten entries.
 
-using toby::tokenize::load_gpt2_vocab;
-using toby::tokenize::load_tokenizer_json;
 using toby::tokenize::VocabLoadError;
+using toby::tokenize::detail::load_gpt2_vocab;
+using toby::tokenize::detail::load_tokenizer_json;
 using toby::tokenize::detail::RawVocab;
 
 namespace {
