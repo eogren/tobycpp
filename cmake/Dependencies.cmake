@@ -78,6 +78,26 @@ FetchContent_Declare(nlohmann_json
 FetchContent_MakeAvailable(nlohmann_json)
 
 # ---------------------------------------------------------------------------
+# ICU4C -- UTF-8 traversal and Unicode character properties.
+#
+# The pre-tokenizer needs both halves of Unicode handling: walking UTF-8 while
+# retaining byte offsets, and classifying each decoded code point (letters,
+# numbers, whitespace, ...). ICU's `uc` component supplies those APIs and the
+# Unicode data behind them; the higher-level i18n/io components are unnecessary.
+#
+# ICU4C is intentionally found as a system library instead of fetched here.
+# Upstream does not provide a CMake build -- its supported Unix build uses
+# Autotools -- so FetchContent_MakeAvailable() cannot integrate it like the
+# CMake-native dependencies above. CMake's FindICU module provides the imported
+# ICU::uc target and is the supported consumer-side integration.
+#
+# Tokenizer code should prefer ICU's stable C API. Besides being the smaller
+# surface for this job, that avoids coupling our libc++ build to the C++ ABI of
+# whichever compiler built the system ICU package.
+# ---------------------------------------------------------------------------
+find_package(ICU REQUIRED COMPONENTS uc)
+
+# ---------------------------------------------------------------------------
 # Boost.Unordered -- open-addressed hash containers.
 #
 # We want `boost::unordered_flat_map`, which is a genuinely different data
