@@ -94,8 +94,7 @@ cmake --preset clang-tidy && cmake --build --preset clang-tidy
 
 ## 5. Conventions
 
-- C++23, no compiler extensions. `std::print`/`std::println` are fine (libc++).
-- Namespace `toby::`, engine under `toby::core::`.
+- C++23, no compiler extensions.
 - Formatting is enforced by `.clang-format` via a pre-commit hook — don't
   hand-format; let the hook do it.
 - Keep first-party code warning-clean (warnings are errors on the Clang preset).
