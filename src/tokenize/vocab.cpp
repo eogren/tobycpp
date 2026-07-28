@@ -1,0 +1,323 @@
+#include "toby/tokenize/vocab.hpp"
+
+#include <cstddef>
+#include <cstdint>
+#include <filesystem>
+#include <format>
+#include <fstream>
+#include <ios>
+#include <iterator>
+#include <limits>
+#include <nlohmann/json.hpp>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
+namespace {
+
+// json.hpp is nlohmann's umbrella header; include-cleaner wants the internal
+// detail header that actually declares this, which is not ours to depend on.
+// NOLINTNEXTLINE(misc-include-cleaner)
+using nlohmann::json;
+using toby::tokenize::VocabLoadError;
+
+// Slurp the whole file. Vocabularies are a few MB and we parse them in one shot
+// anyway, so streaming buys nothing and costs error-reporting clarity.
+//
+// Opened in binary mode deliberately: merges.txt is line-oriented, but letting
+// the platform rewrite line endings would silently corrupt a token whose bytes
+// happen to map to \r. Trailing \r is stripped explicitly below instead.
+std::string read_file(const std::filesystem::path& path) {
+    std::ifstream in{path, std::ios::binary};
+    if (!in) {
+        throw VocabLoadError{std::format("cannot open {}", path.string())};
+    }
+
+    std::string contents{std::istreambuf_iterator<char>{in}, std::istreambuf_iterator<char>{}};
+    if (in.bad()) {
+        throw VocabLoadError{std::format("error reading {}", path.string())};
+    }
+
+    return contents;
+}
+
+json parse_json(const std::filesystem::path& path) {
+    const std::string text = read_file(path);
+    try {
+        return json::parse(text);
+    } catch (const json::exception& e) {
+        // Rethrown as our type so a caller needs to know about exactly one
+        // exception class, not nlohmann's hierarchy as well.
+        throw VocabLoadError{std::format("{}: malformed JSON: {}", path.string(), e.what())};
+    }
+}
+
+// Token ids index into the embedding matrix, so they must be non-negative and
+// must fit the type we hand back. A file that violates that is corrupt, and
+// finding out here beats finding out via an out-of-bounds row lookup later.
+std::int32_t to_token_id(const json& value, const std::filesystem::path& path,
+                         std::string_view what) {
+    if (!value.is_number_integer()) {
+        throw VocabLoadError{std::format("{}: {}: expected an integer id, got {}", path.string(),
+                                         what, value.type_name())};
+    }
+
+    const auto raw = value.get<std::int64_t>();
+    if (raw < 0 || raw > std::numeric_limits<std::int32_t>::max()) {
+        throw VocabLoadError{
+            std::format("{}: {}: token id {} out of range", path.string(), what, raw)};
+    }
+
+    return static_cast<std::int32_t>(raw);
+}
+
+std::unordered_map<std::string, std::int32_t>
+parse_vocab_object(const json& vocab, const std::filesystem::path& path) {
+    if (!vocab.is_object()) {
+        throw VocabLoadError{std::format("{}: vocab is not a JSON object", path.string())};
+    }
+
+    std::unordered_map<std::string, std::int32_t> out;
+    out.reserve(vocab.size());
+
+    for (const auto& [token, id] : vocab.items()) {
+        out.emplace(token, to_token_id(id, path, std::format("vocab entry '{}'", token)));
+    }
+
+    return out;
+}
+
+// Split "left right" into its two halves.
+//
+// Splitting on the first space is unambiguous: in the byte<->unicode alphabet a
+// real space is spelled U+0120, so neither half can contain U+0020. That also
+// means a second space is corruption rather than a token containing one, which
+// is why it is rejected instead of folded into the right-hand side.
+std::pair<std::string, std::string> split_merge(std::string_view line,
+                                                const std::filesystem::path& path,
+                                                const std::size_t line_number) {
+    const std::size_t space = line.find(' ');
+    if (space == std::string_view::npos) {
+        throw VocabLoadError{std::format("{}:{}: merge rule has no space separator: '{}'",
+                                         path.string(), line_number, line)};
+    }
+
+    const std::string_view left = line.substr(0, space);
+    const std::string_view right = line.substr(space + 1);
+
+    if (left.empty() || right.empty() || right.find(' ') != std::string_view::npos) {
+        throw VocabLoadError{std::format("{}:{}: merge rule is not exactly two parts: '{}'",
+                                         path.string(), line_number, line)};
+    }
+
+    return {std::string{left}, std::string{right}};
+}
+
+// Pull the pre-tokenizer regex out of a tokenizer.json `pre_tokenizer` node.
+//
+// The node is usually a Sequence whose first element does the regex split and
+// whose second is the ByteLevel mapping, e.g.
+//
+//   {"type": "Sequence", "pretokenizers": [
+//       {"type": "Split", "pattern": {"Regex": "(?i:'s|'t|...)"}, ...},
+//       {"type": "ByteLevel", ...}]}
+//
+// but it can also be a bare Split. Returns the first Regex found, or "" -- a
+// missing pattern is not an error, it just means there is nothing to check the
+// hand-rolled scanner against. A {"String": ...} pattern is skipped: that is a
+// literal delimiter, not a regex, and reporting it as one would be a lie.
+//
+// Walked with an explicit worklist rather than recursion. A tokenizer.json is
+// operator-supplied rather than user-supplied, so this is not an attack surface
+// -- but "parser you can blow the stack on by nesting Sequences" is still not a
+// thing to ship in a server, and the iterative form costs nothing here.
+std::string find_split_regex(const json& root) {
+    // Depth is 2 in every real file; this only exists so a pathological one
+    // terminates rather than walking forever.
+    constexpr int max_nodes = 256;
+
+    std::vector<const json*> worklist{&root};
+    int visited = 0;
+
+    while (!worklist.empty() && visited < max_nodes) {
+        const json* const node = worklist.back();
+        worklist.pop_back();
+        ++visited;
+
+        if (!node->is_object()) {
+            continue;
+        }
+
+        const auto type = node->value("type", std::string{});
+
+        if (type == "Split") {
+            const auto pattern = node->find("pattern");
+            if (pattern != node->end() && pattern->is_object()) {
+                const auto regex = pattern->find("Regex");
+                if (regex != pattern->end() && regex->is_string()) {
+                    return regex->get<std::string>();
+                }
+            }
+            continue;
+        }
+
+        if (type == "Sequence") {
+            const auto nested = node->find("pretokenizers");
+            if (nested != node->end() && nested->is_array()) {
+                // Pushed in reverse so the stack pops them in document order:
+                // the first Split wins, and "first" should mean first in the
+                // file rather than an artifact of the traversal.
+                for (auto child = nested->rbegin(); child != nested->rend(); ++child) {
+                    worklist.push_back(&*child);
+                }
+            }
+        }
+    }
+
+    return {};
+}
+
+std::vector<toby::tokenize::AddedToken> parse_added_tokens(const json& root,
+                                                           const std::filesystem::path& path) {
+    const auto added = root.find("added_tokens");
+    if (added == root.end() || !added->is_array()) {
+        return {};
+    }
+
+    std::vector<toby::tokenize::AddedToken> out;
+    out.reserve(added->size());
+
+    for (const auto& entry : *added) {
+        if (!entry.is_object()) {
+            throw VocabLoadError{
+                std::format("{}: added_tokens entry is not an object", path.string())};
+        }
+
+        const auto id = entry.find("id");
+        const auto content = entry.find("content");
+        if (id == entry.end() || content == entry.end() || !content->is_string()) {
+            throw VocabLoadError{
+                std::format("{}: added_tokens entry missing id or content", path.string())};
+        }
+
+        out.push_back({.id = to_token_id(*id, path, "added_tokens entry"),
+                       .content = content->get<std::string>(),
+                       // Absent means ordinary: HF omits the flag on non-specials.
+                       .special = entry.value("special", false)});
+    }
+
+    return out;
+}
+
+} // namespace
+
+namespace toby::tokenize {
+
+// Two paths in a fixed order is the honest signature; swapping them fails loudly
+// at parse time with the offending filename in the message, so a wrapper type per
+// path would be ceremony without a payoff.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+RawVocab load_gpt2_vocab(const std::filesystem::path& vocab_json,
+                         const std::filesystem::path& merges_txt) {
+    RawVocab out;
+    out.vocab = parse_vocab_object(parse_json(vocab_json), vocab_json);
+
+    const std::string merges = read_file(merges_txt);
+
+    std::size_t line_number = 0;
+    std::size_t pos = 0;
+    while (pos <= merges.size()) {
+        const std::size_t newline = merges.find('\n', pos);
+        const std::size_t end = newline == std::string::npos ? merges.size() : newline;
+
+        std::string_view line{merges};
+        line = line.substr(pos, end - pos);
+        if (!line.empty() && line.back() == '\r') {
+            line.remove_suffix(1);
+        }
+
+        ++line_number;
+
+        // Only line 1 may be the version banner. A later '#' is a real token:
+        // 0x23 maps to itself in the byte<->unicode alphabet, so "# #" is a
+        // legitimate merge rule and skipping every '#' line would drop it.
+        const bool is_version_banner = line_number == 1 && line.starts_with("#version");
+
+        if (!line.empty() && !is_version_banner) {
+            out.merges.push_back(split_merge(line, merges_txt, line_number));
+        }
+
+        if (newline == std::string::npos) {
+            break;
+        }
+        pos = newline + 1;
+    }
+
+    return out;
+}
+
+RawVocab load_tokenizer_json(const std::filesystem::path& tokenizer_json) {
+    const json root = parse_json(tokenizer_json);
+
+    const auto model = root.find("model");
+    if (model == root.end() || !model->is_object()) {
+        throw VocabLoadError{std::format("{}: no \"model\" object", tokenizer_json.string())};
+    }
+
+    // Reject non-BPE up front. A Unigram/SentencePiece file (Llama 2, Gemma) is
+    // valid JSON with a valid vocab and simply no merges, so without this check
+    // it loads "successfully" and then tokenizes everything wrong.
+    const auto type = model->value("type", std::string{});
+    if (type != "BPE") {
+        throw VocabLoadError{std::format(
+            "{}: model.type is '{}', expected 'BPE' -- this tokenizer is not byte-level BPE "
+            "and its vocabulary is not usable by this merge engine",
+            tokenizer_json.string(), type)};
+    }
+
+    RawVocab out;
+
+    const auto vocab = model->find("vocab");
+    if (vocab == model->end()) {
+        throw VocabLoadError{std::format("{}: no model.vocab", tokenizer_json.string())};
+    }
+    out.vocab = parse_vocab_object(*vocab, tokenizer_json);
+
+    const auto merges = model->find("merges");
+    if (merges == model->end() || !merges->is_array()) {
+        throw VocabLoadError{std::format("{}: no model.merges array", tokenizer_json.string())};
+    }
+
+    out.merges.reserve(merges->size());
+    std::size_t index = 0;
+    for (const auto& entry : *merges) {
+        ++index;
+
+        // Two encodings in the wild for the same data: tokenizers < 0.20 wrote
+        // "a b"; newer versions write ["a", "b"]. The array form is also the
+        // only one that could represent a token containing a space, so prefer
+        // it structurally rather than re-joining and re-splitting.
+        if (entry.is_string()) {
+            out.merges.push_back(split_merge(entry.get<std::string>(), tokenizer_json, index));
+        } else if (entry.is_array() && entry.size() == 2 && entry[0].is_string() &&
+                   entry[1].is_string()) {
+            out.merges.emplace_back(entry[0].get<std::string>(), entry[1].get<std::string>());
+        } else {
+            throw VocabLoadError{std::format("{}: model.merges[{}] is neither \"a b\" nor [a, b]",
+                                             tokenizer_json.string(), index - 1)};
+        }
+    }
+
+    out.added_tokens = parse_added_tokens(root, tokenizer_json);
+
+    const auto pre = root.find("pre_tokenizer");
+    if (pre != root.end()) {
+        out.pretokenizer_pattern = find_split_regex(*pre);
+    }
+
+    return out;
+}
+
+} // namespace toby::tokenize

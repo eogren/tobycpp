@@ -1,0 +1,10 @@
+{
+  "version": "1.0",
+  "added_tokens": [],
+  "pre_tokenizer": { "type": "Metaspace", "replacement": "▁" },
+  "model": {
+    "type": "Unigram",
+    "unk_id": 0,
+    "vocab": [["<unk>", 0.0], ["▁a", -3.5]]
+  }
+}

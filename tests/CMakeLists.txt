@@ -16,7 +16,8 @@ include(Catch)
 
 add_executable(toby_tests
   core/version_test.cpp
-  tokenize/pretokenizer_test.cpp)
+  tokenize/pretokenizer_test.cpp
+  tokenize/vocab_test.cpp)
 
 target_link_libraries(toby_tests
   PRIVATE
@@ -26,6 +27,14 @@ target_link_libraries(toby_tests
     toby::warnings
     toby::sanitizers
     toby::simd)
+
+# Fixture files are read at run time, and CTest runs tests from the build tree,
+# so the source-tree path has to be compiled in. Baked as a define rather than
+# resolved relative to argv[0]: that keeps the tests runnable straight from the
+# binary too, not only under CTest.
+target_compile_definitions(toby_tests
+  PRIVATE
+    TOBY_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 
 # Lint first-party test code too (but never Catch2's own sources).
 toby_enable_tidy(toby_tests)

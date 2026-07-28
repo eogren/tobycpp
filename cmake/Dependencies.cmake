@@ -46,3 +46,33 @@ FetchContent_Declare(httplib
   EXCLUDE_FROM_ALL)
 
 FetchContent_MakeAvailable(httplib)
+
+# ---------------------------------------------------------------------------
+# nlohmann/json -- parsing tokenizer vocabulary files.
+#
+# Every vocab format we care about is JSON: GPT-2 ships vocab.json, and Llama 3
+# / Qwen ship a single tokenizer.json holding vocab, merges and added tokens.
+#
+# Chosen for ergonomics, not speed. These files are large (GPT-2's vocab.json is
+# ~1MB; a Llama 3 tokenizer.json is ~9MB) and nlohmann's DOM parser is not fast
+# on them -- but this runs once at model load, next to reading weights off disk,
+# so it is not the thing to optimize. If load time ever does matter, simdjson is
+# a drop-in swap at the call sites in src/tokenize/vocab.cpp; the loader hands
+# back its own types precisely so nothing else in the tree sees the JSON library.
+#
+# JSON_Install/JSON_BuildTests off: we consume headers only, and its test suite
+# is large enough to notice in a clean configure.
+# ---------------------------------------------------------------------------
+set(TOBY_JSON_VERSION "v3.11.3" CACHE STRING "nlohmann/json git tag to fetch")
+
+set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
+set(JSON_Install OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(nlohmann_json
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG        ${TOBY_JSON_VERSION}
+  GIT_SHALLOW    TRUE
+  SYSTEM
+  EXCLUDE_FROM_ALL)
+
+FetchContent_MakeAvailable(nlohmann_json)
