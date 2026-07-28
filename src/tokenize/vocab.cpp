@@ -1,5 +1,7 @@
 #include "toby/tokenize/vocab.hpp"
 
+#include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -9,6 +11,7 @@
 #include <iterator>
 #include <limits>
 #include <nlohmann/json.hpp>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -187,6 +190,65 @@ parse_added_tokens(const json& root, const std::filesystem::path& path) {
     return out;
 }
 
+// Helper for byte_to_printable_map -- can a byte be encoded directly?
+// Derived from bs = list(range(ord("!"), ord("~")+1))+list(range(ord("¡"),
+// ord("¬")+1))+list(range(ord("®"), ord("ÿ")+1))
+[[nodiscard]] constexpr bool can_encode_directly(std::uint8_t byte) {
+    return ((byte >= 33 && byte <= 126) || (byte >= 161 && byte <= 172) ||
+            (byte >= 174 && byte <= 255));
+}
+
+// Generate an array that maps a raw byte to a uint16_t representation.
+// Equivalent of bytes_to_unicode() in https://github.com/openai/gpt-2/blob/master/src/encoder.py.
+//
+// We need this for the reverse map (given a codepoint in a vocab or merge file, translate it back
+// to raw byte).
+[[nodiscard]] constexpr auto byte_to_printable_map() {
+    std::array<std::uint16_t, 256> ret{};
+    static_assert(ret.size() <= 256);
+
+    std::uint16_t to_add = 0;
+
+    for (std::uint16_t i = 0; i < ret.size(); i++) { // NOLINT(bugprone-too-small-loop-variable)
+        if (can_encode_directly(static_cast<std::uint8_t>(i))) {
+            ret[i] = i; // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index): static_assert
+                        // guarantees this
+        } else {
+            ret[i] = 256 + to_add; // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
+            to_add++;
+        }
+    }
+
+    return ret;
+}
+
+// Reverse of byte_to_printable_map.
+[[nodiscard]] constexpr auto printable_to_byte_map() {
+    std::array<std::optional<std::uint8_t>, 324> ret{};
+
+    constexpr auto forward_map = byte_to_printable_map();
+    for (std::size_t i = 0; i < forward_map.size(); i++) {
+        ret[forward_map[i]] = // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
+            static_cast<uint8_t>(i);
+    }
+    return ret;
+}
+
+static_assert(printable_to_byte_map()[0x20] == std::nullopt);
+static_assert(printable_to_byte_map()[0x20 + 256] == 0x20);
+
+template <typename T, std::size_t N> constexpr bool all_unique(const std::array<T, N>& values) {
+    for (auto it = values.begin(); it != values.end(); ++it) {
+        if (std::find(std::next(it), values.end(), *it) != values.end()) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static_assert(all_unique(byte_to_printable_map()));
+static_assert(byte_to_printable_map()[0x20] == 288);
 } // namespace
 
 namespace toby::tokenize {
