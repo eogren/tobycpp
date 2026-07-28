@@ -1,5 +1,7 @@
 #include "toby/core/version.hpp"
 
+#include <string_view>
+
 namespace toby::core {
 
 std::string_view library_version() noexcept {
