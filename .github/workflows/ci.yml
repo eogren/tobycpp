@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Build, test, and analyze
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Clang 20 toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes wget
+          wget --quiet https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 20
+          rm llvm.sh
+          sudo apt-get update
+          sudo apt-get install --yes \
+            clang-20 \
+            clang-tidy-20 \
+            libc++-20-dev \
+            libc++abi-20-dev \
+            lld-20 \
+            cmake \
+            ninja-build
+
+      - name: Build and test (Debug)
+        run: |
+          cmake --preset clang-debug
+          cmake --build --preset clang-debug
+          ctest --preset clang-debug
+
+      - name: Static analysis (clang-tidy)
+        run: |
+          cmake --preset clang-tidy
+          cmake --build --preset clang-tidy
+
+      - name: Build and test (ASan + UBSan)
+        run: |
+          cmake --preset clang-asan
+          cmake --build --preset clang-asan
+          ctest --preset clang-asan
+
+      - name: Build and test (TSan)
+        run: |
+          cmake --preset clang-tsan
+          cmake --build --preset clang-tsan
+          ctest --preset clang-tsan
