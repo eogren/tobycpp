@@ -21,9 +21,8 @@ Checks: >
   -misc-non-private-member-variables-in-classes,
   -readability-identifier-length
 
-# Keep the build green while learning; flip to a check list here once the
-# codebase stabilizes if you want hard failures on specific checks.
-WarningsAsErrors: ''
+# Static analysis is a CI quality gate: every enabled check must pass.
+WarningsAsErrors: '*'
 
 # Only analyze our own headers, not FetchContent/system headers.
 HeaderFilterRegex: '.*/(src|include|tests)/.*'

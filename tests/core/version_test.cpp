@@ -1,6 +1,7 @@
 #include "toby/core/version.hpp"
 
 #include <catch2/catch_test_macros.hpp>
+#include <string_view>
 
 // A smoke test proving the build -> link -> test pipeline works end to end.
 // As you build the engine in toby::core, add real tests alongside it. Tests

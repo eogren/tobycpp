@@ -10,7 +10,6 @@
 // Also the quickest way to see the byte<->unicode representation for yourself:
 // the sample entries print raw, so a space really does show up as "Ġ".
 
-#include "toby/tokenize/vocab.hpp"
 #include "vocab_detail.hpp"
 
 #include <algorithm>
