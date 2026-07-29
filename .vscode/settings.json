@@ -1,0 +1,18 @@
+{
+  "clangd.path": "/usr/bin/clangd-20",
+  "clangd.arguments": [
+    "--compile-commands-dir=${workspaceFolder}/build/clang-debug",
+    "--query-driver=/usr/bin/clang++-20",
+    "--background-index",
+    "--clang-tidy"
+  ],
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "cmake.useCMakePresets": "always",
+  "cmake.configureOnOpen": false,
+  "[c]": {
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+  },
+  "[cpp]": {
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+  }
+}
