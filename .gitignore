@@ -20,6 +20,9 @@ _deps/
 # Editors / tooling
 .cache/
 .vscode/
+!.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
 .idea/
 *.swp
 .DS_Store
