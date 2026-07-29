@@ -1,14 +1,18 @@
 #pragma once
 
+#include <concepts>
+#include <cstddef>
+#include <cstdint>
+#include <filesystem>
+#include <functional>
+#include <optional>
+#include <span>
 #include <stdexcept>
+#include <utility>
+#include <vector>
 
 // -----------------------------------------------------------------------------
-// Vocabulary (SCAFFOLDING -- file-format plumbing, not the algorithm).
-//
-// The parsed on-disk representation is deliberately private: its strings use
-// GPT-2's printable byte alphabet and are not usable as tokenizer lookup keys.
-// This public header will hold the decoded Vocab API once that representation
-// exists. For now it exposes only the common load-error type.
+// Vocabulary functions
 // -----------------------------------------------------------------------------
 
 namespace toby::tokenize {
@@ -24,4 +28,63 @@ public:
     using std::runtime_error::runtime_error;
 };
 
+struct Gpt2VocabFiles {
+    std::filesystem::path vocab;
+    std::filesystem::path merges;
+};
+
+struct TokenId {
+    std::uint32_t value;
+
+    TokenId() = delete;
+
+    constexpr explicit TokenId(std::uint32_t val) noexcept : value{val} {}
+
+    auto operator<=>(const TokenId&) const = default;
+};
+
+static_assert(std::constructible_from<TokenId, std::uint32_t>);
+static_assert(!std::default_initializable<TokenId>);
+static_assert(!std::convertible_to<std::uint32_t, TokenId>);
+
+class Vocab {
+public:
+    /// Load a GPT-2 style vocab from the given files.
+    [[nodiscard]] static Vocab load_gpt2(const Gpt2VocabFiles& files);
+
+    /// Size of the vocab
+    [[nodiscard]] constexpr std::size_t size() const noexcept { return token_to_bytes_.size(); }
+
+    /// @brief  Lookup token by the given ID. Returns the bytes associated with it.
+    /// @param id Token id
+    /// @return Bytes associated with the token id or nullopt if the token doesn't exist
+    [[nodiscard]] std::optional<std::span<const std::byte>> lookup_token(TokenId id) const;
+
+    [[nodiscard]] std::optional<TokenId>
+    token_for_bytes(std::span<const std::byte> bytes) const noexcept;
+
+private:
+    struct ByteRange {
+        std::size_t offset;
+        std::size_t length;
+
+        auto operator<=>(const ByteRange&) const = default;
+    };
+
+    [[nodiscard]] std::span<const std::byte> to_span(const ByteRange& range) const;
+
+    /// @brief  All tokens contained in the vocab file. String_views returned by the public
+    /// API end up pointing into here.
+    std::vector<std::byte> all_tokens_;
+
+    std::vector<std::optional<ByteRange>> token_to_bytes_;
+    std::vector<std::pair<ByteRange, TokenId>> bytes_to_token_id_;
+};
+
 } // namespace toby::tokenize
+
+template <> struct std::hash<toby::tokenize::TokenId> {
+    std::size_t operator()(toby::tokenize::TokenId id) const noexcept {
+        return std::hash<std::uint32_t>{}(id.value);
+    }
+};

@@ -1,24 +1,22 @@
 #include "toby/tokenize/vocab.hpp"
 #include "vocab_detail.hpp"
 
+#include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
+#include <cstddef>
 #include <filesystem>
+#include <functional>
+#include <optional>
+#include <span>
 #include <string>
-#include <string_view>
 #include <utility>
 
-// Tests for the vocabulary loaders. Unlike the pre-tokenizer suite, these assert
-// exact values freely: this is file-format plumbing the assistant wrote, not the
-// algorithm you are here to learn, so pinning it hard costs you nothing.
-//
-// Fixtures are deliberately tiny and synthetic (tests/fixtures/). A real
-// vocab.json is ~1MB and would make a failure unreadable; every branch worth
-// testing is reachable from ten entries.
-
+// Tests for the vocabulary loaders.
+using toby::tokenize::TokenId;
+using toby::tokenize::Vocab;
 using toby::tokenize::VocabLoadError;
-using toby::tokenize::detail::load_gpt2_vocab;
 using toby::tokenize::detail::load_tokenizer_json;
 using toby::tokenize::detail::RawVocab;
 
@@ -28,40 +26,58 @@ std::filesystem::path fixtures() {
     return std::filesystem::path{TOBY_TEST_FIXTURE_DIR};
 }
 
-// U+0120, UTF-8 encoded: the byte<->unicode alphabet's stand-in for a space,
-// which is why vocab files are full of "Ġhello".
-//
-// Named rather than spelled inline at each use: writing "\xc4\xa0" "a" needs
-// adjacent-literal concatenation to stop the compiler reading "\xa0a" as a
-// single (overlong) hex escape, and that is exactly the kind of subtlety a
-// formatter is entitled to flatten.
-constexpr std::string_view g_space_mark = "\xc4\xa0";
-
-std::string mapped(std::string_view rest) {
-    return std::string{g_space_mark} + std::string{rest};
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
+template <std::size_t N> constexpr std::span<const std::byte> literal_bytes(const char (&text)[N]) {
+    return std::as_bytes(std::span{text}.template first<N - 1>());
 }
-
 } // namespace
 
+TEST_CASE("token_id tests", "[tokenize][vocab]") {
+    auto token1 = TokenId{1};
+    auto other_token1 = TokenId{1};
+    auto token2 = TokenId{2};
+
+    SECTION("tokens are comparable") {
+        CHECK(token1 == other_token1);
+        CHECK(token1 < token2);
+        CHECK(token2 > token1);
+        CHECK(other_token1 == token1);
+    }
+
+    SECTION("tokens are hashable") {
+        CHECK(std::hash<TokenId>{}(TokenId{42}) == std::hash<TokenId>{}(TokenId{42}));
+    }
+}
+
+TEST_CASE("load_gpt2_vocab throws on bad files", "[tokenize][vocab]") {
+    REQUIRE_THROWS_AS(Vocab::load_gpt2({.vocab = fixtures() / "bad_gpt2" / "vocab.json",
+                                        .merges = fixtures() / "bad_gpt2" / "merges.txt"}),
+                      VocabLoadError);
+}
+
+TEST_CASE("load_gpt2_vocab throws on duplicate token ids", "[tokenize][vocab]") {
+    REQUIRE_THROWS_AS(Vocab::load_gpt2({.vocab = fixtures() / "duplicate_gpt2" / "vocab.json",
+                                        .merges = fixtures() / "duplicate_gpt2" / "merges.txt"}),
+                      VocabLoadError);
+}
+
 TEST_CASE("load_gpt2_vocab reads vocab.json and merges.txt", "[tokenize][vocab]") {
-    const RawVocab loaded =
-        load_gpt2_vocab(fixtures() / "gpt2" / "vocab.json", fixtures() / "gpt2" / "merges.txt");
+    const auto loaded = Vocab::load_gpt2({.vocab = fixtures() / "gpt2" / "vocab.json",
+                                          .merges = fixtures() / "gpt2" / "merges.txt"});
 
-    SECTION("vocab entries map to their ids") {
-        CHECK(loaded.vocab.size() == 10);
-        CHECK(loaded.vocab.at("a") == 3);
-        CHECK(loaded.vocab.at("ab") == 5);
-        CHECK(loaded.vocab.at("<|endoftext|>") == 9);
+    SECTION("vocab entries map to their ids incl unicode demapping") {
+        CHECK(loaded.size() == 10);
+
+        CHECK(loaded.token_for_bytes(literal_bytes("a")) == TokenId{3});
+        CHECK(loaded.token_for_bytes(literal_bytes("ab")) == TokenId{5});
+        CHECK(loaded.token_for_bytes(literal_bytes(" a")) == TokenId{7});
+        CHECK(loaded.token_for_bytes(literal_bytes("<|endoftext|>")) == TokenId{9});
+
+        const auto token = loaded.lookup_token(TokenId{3});
+        CHECK(std::ranges::equal(token.value_or(literal_bytes("")), literal_bytes("a")));
     }
 
-    SECTION("tokens keep the file's byte<->unicode spelling, undecoded") {
-        // "Ġa" is the file's way of writing " a". If this ever comes back as
-        // " a", something started decoding behind the loader's back and the
-        // header's contract is broken.
-        CHECK(loaded.vocab.contains(mapped("a")));
-        CHECK_FALSE(loaded.vocab.contains(" a"));
-    }
-
+    /*
     SECTION("merges are in rank order") {
         REQUIRE(loaded.merges.size() == 3);
         CHECK(loaded.merges[0] == std::pair<std::string, std::string>{"a", "b"});
@@ -75,11 +91,7 @@ TEST_CASE("load_gpt2_vocab reads vocab.json and merges.txt", "[tokenize][vocab]"
         REQUIRE(loaded.merges.size() == 3);
         CHECK(loaded.merges[2] == std::pair<std::string, std::string>{"#", "#"});
     }
-
-    SECTION("GPT-2 files declare no pattern and no added tokens") {
-        CHECK(loaded.pretokenizer_pattern.empty());
-        CHECK(loaded.added_tokens.empty());
-    }
+        */
 }
 
 TEST_CASE("load_tokenizer_json reads a HuggingFace BPE file", "[tokenize][vocab]") {
@@ -142,9 +154,9 @@ TEST_CASE("vocab loaders reject malformed and missing files", "[tokenize][vocab]
     SECTION("missing file") {
         CHECK_THROWS_AS(load_tokenizer_json(fixtures() / "hf" / "does_not_exist.json"),
                         VocabLoadError);
-        CHECK_THROWS_AS(
-            load_gpt2_vocab(fixtures() / "gpt2" / "nope.json", fixtures() / "gpt2" / "merges.txt"),
-            VocabLoadError);
+        CHECK_THROWS_AS(Vocab::load_gpt2({.vocab = fixtures() / "gpt2" / "nope.json",
+                                          .merges = fixtures() / "gpt2" / "merges.txt"}),
+                        VocabLoadError);
     }
 
     SECTION("the error names the file") {
