@@ -1,14 +1,10 @@
 #pragma once
 
+#include <filesystem>
 #include <stdexcept>
 
 // -----------------------------------------------------------------------------
-// Vocabulary (SCAFFOLDING -- file-format plumbing, not the algorithm).
-//
-// The parsed on-disk representation is deliberately private: its strings use
-// GPT-2's printable byte alphabet and are not usable as tokenizer lookup keys.
-// This public header will hold the decoded Vocab API once that representation
-// exists. For now it exposes only the common load-error type.
+// Vocabulary functions
 // -----------------------------------------------------------------------------
 
 namespace toby::tokenize {
@@ -24,4 +20,14 @@ public:
     using std::runtime_error::runtime_error;
 };
 
+struct Gpt2VocabFiles {
+    std::filesystem::path vocab;
+    std::filesystem::path merges;
+};
+
+class Vocab {
+public:
+    /// Load a GPT-2 style vocab from the given files.
+    [[nodiscard]] static Vocab load_gpt2(const Gpt2VocabFiles& files);
+};
 } // namespace toby::tokenize

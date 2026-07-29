@@ -361,3 +361,10 @@ RawVocab load_tokenizer_json(const std::filesystem::path& tokenizer_json) {
 }
 
 } // namespace toby::tokenize::detail
+
+namespace toby::tokenize {
+Vocab Vocab::load_gpt2(const Gpt2VocabFiles& files) {
+    auto raw_vocab = detail::load_gpt2_vocab(files.vocab, files.merges);
+    return Vocab{};
+}
+} // namespace toby::tokenize
