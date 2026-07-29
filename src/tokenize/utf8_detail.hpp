@@ -40,8 +40,8 @@ void for_each_utf8_code_point(std::string_view text, Callback callback) {
 
         UChar32 code_point{};
         // NOLINTNEXTLINE(readability-simplify-subscript-expr, bugprone-inc-dec-in-conditions)
-        U8_NEXT(text.data(), offset, length, code_point); 
-        
+        U8_NEXT(text.data(), offset, length, code_point);
+
         if (code_point < 0) {
             throw std::invalid_argument{"ill-formed UTF-8"};
         }
