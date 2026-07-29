@@ -14,6 +14,7 @@
 #include <limits>
 #include <nlohmann/json.hpp>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -367,4 +368,23 @@ Vocab Vocab::load_gpt2(const Gpt2VocabFiles& files) {
     auto raw_vocab = detail::load_gpt2_vocab(files.vocab, files.merges);
     return Vocab{};
 }
+
+[[nodiscard]] std::optional<TokenId>
+Vocab::token_for_bytes(std::span<const std::byte> bytes) const noexcept {
+    auto entry =
+        std::ranges::lower_bound(bytes_to_token_id_, bytes,
+                                 [](const std::pair<std::span<const std::byte>, TokenId>& entry,
+                                    std::span<const std::byte> to_find) {
+                                        return std::ranges::less(entry.first, to_find);
+                                 });
+}
+
+[[nodiscard]] std::optional<std::span<const std::byte>> Vocab::lookup_token(TokenId id) const {
+    if (id.value >= token_to_bytes_.size()) {
+        throw std::out_of_range{"TokenId larger than vocab size"};
+    }
+
+    return token_to_bytes_[id.value];
+}
+
 } // namespace toby::tokenize
