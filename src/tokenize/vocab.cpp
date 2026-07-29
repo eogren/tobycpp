@@ -1,5 +1,6 @@
 #include "toby/tokenize/vocab.hpp"
 
+#include "utf8_detail.hpp"
 #include "vocab_detail.hpp"
 
 #include <algorithm>
@@ -13,8 +14,10 @@
 #include <iterator>
 #include <limits>
 #include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -227,18 +230,18 @@ parse_added_tokens(const json& root, const std::filesystem::path& path) {
 
 // Reverse of byte_to_printable_map.
 [[nodiscard]] constexpr auto printable_to_byte_map() {
-    std::array<std::optional<std::uint8_t>, 324> ret{};
+    std::array<std::optional<std::byte>, 324> ret{};
 
     constexpr auto forward_map = byte_to_printable_map();
     for (std::size_t i = 0; i < forward_map.size(); i++) {
         ret[forward_map[i]] = // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
-            static_cast<uint8_t>(i);
+            static_cast<std::byte>(i);
     }
     return ret;
 }
 
 static_assert(printable_to_byte_map()[0x20] == std::nullopt);
-static_assert(printable_to_byte_map()[0x20 + 256] == 0x20);
+static_assert(printable_to_byte_map()[0x20 + 256] == std::byte{0x20});
 
 template <typename T, std::size_t N> constexpr bool all_unique(const std::array<T, N>& values) {
     for (auto it = values.begin(); it != values.end(); ++it) {
@@ -252,6 +255,7 @@ template <typename T, std::size_t N> constexpr bool all_unique(const std::array<
 
 static_assert(all_unique(byte_to_printable_map()));
 static_assert(byte_to_printable_map()[0x20] == 288);
+
 } // namespace
 
 namespace toby::tokenize::detail {
@@ -364,19 +368,121 @@ RawVocab load_tokenizer_json(const std::filesystem::path& tokenizer_json) {
 } // namespace toby::tokenize::detail
 
 namespace toby::tokenize {
+std::span<const std::byte> Vocab::to_span(const ByteRange& range) const {
+    auto it = all_tokens_.begin();
+    std::advance(it, range.offset);
+    return std::span{it, range.length};
+}
+
 Vocab Vocab::load_gpt2(const Gpt2VocabFiles& files) {
+    using toby::tokenize::detail::for_each_utf8_code_point;
+    using toby::tokenize::detail::Utf8CodePoint;
+
     auto raw_vocab = detail::load_gpt2_vocab(files.vocab, files.merges);
-    return Vocab{};
+    auto ret = Vocab{};
+
+    auto vocab_size = raw_vocab.vocab.size() + raw_vocab.added_tokens.size();
+    if (vocab_size == 0) {
+        throw VocabLoadError{"No entries found in vocab file"};
+    }
+
+    auto max_expected_id = vocab_size - 1;
+
+    try {
+        constexpr auto printable_to_bytes = printable_to_byte_map();
+
+        for (const auto& [key, value] : raw_vocab.vocab) {
+
+            std::vector<std::byte> vocab_bytes;
+
+            if (std::cmp_greater(value, max_expected_id)) {
+                throw VocabLoadError{std::format("{}: Token id {} is greater than expected max {}",
+                                                 files.vocab.string(), value, max_expected_id)};
+            }
+
+            // Validate each codepoint and append to vocab_bytes. This guards us from adding corrupt
+            // data into the the internal state of Vocab (even though in practice a parse error here
+            // is probably fatal)
+
+            for_each_utf8_code_point(key, [&printable_to_bytes,
+                                           &vocab_bytes](const Utf8CodePoint cp) {
+                if (cp.value >= printable_to_bytes.size()) {
+                    throw std::range_error{
+                        std::format("vocab contains out-of-range code point U+{:04X}", cp.value)};
+                }
+
+                auto byte = printable_to_bytes.at(cp.value);
+                if (!byte) {
+                    throw std::range_error{std::format(
+                        "vocab contained codepoint that doesn't map to printable: U+{:04X}",
+                        cp.value)};
+                }
+
+                vocab_bytes.push_back(*byte);
+            });
+
+            auto it = ret.all_tokens_.insert_range(ret.all_tokens_.end(), vocab_bytes);
+            auto byte_range = ByteRange{
+                .offset = static_cast<std::size_t>(std::distance(ret.all_tokens_.begin(), it)),
+                .length = vocab_bytes.size(),
+            };
+            auto token_id = TokenId{static_cast<uint32_t>(value)};
+
+            if (ret.token_to_bytes_.size() <= token_id.value) {
+                ret.token_to_bytes_.resize(token_id.value + 1);
+            }
+
+            if (ret.token_to_bytes_.at(token_id.value) != std::nullopt) {
+                throw VocabLoadError{std::format("duplicate token id {} in vocab", token_id.value)};
+            }
+            ret.token_to_bytes_[token_id.value] = byte_range;
+            ret.bytes_to_token_id_.emplace_back(byte_range, token_id);
+        }
+
+        bool missing_token = false;
+        std::string missing_token_ids{"Token ids missing in vocabulary: "};
+        for (size_t i = 0; i < ret.token_to_bytes_.size(); i++) {
+            if (!ret.token_to_bytes_.at(i).has_value()) {
+                std::format_to(std::back_inserter(missing_token_ids), "{}{}",
+                               missing_token ? ", " : "", i);
+                missing_token = true;
+            }
+        }
+
+        if (missing_token) {
+            throw VocabLoadError{missing_token_ids};
+        }
+
+        const auto byte_less = [](const auto lhs, const auto rhs) {
+            return std::ranges::lexicographical_compare(lhs, rhs);
+        };
+
+        std::ranges::sort(ret.bytes_to_token_id_, byte_less,
+                          [&ret](const auto& entry) { return ret.to_span(entry.first); });
+    } catch (const std::invalid_argument& e) {
+        throw VocabLoadError{std::format("failed loading {}: {}", files.vocab.string(), e.what())};
+    } catch (const std::range_error& e) {
+        throw VocabLoadError{std::format("failed loading {}: {}", files.vocab.string(), e.what())};
+    }
+
+    return ret;
 }
 
 [[nodiscard]] std::optional<TokenId>
 Vocab::token_for_bytes(std::span<const std::byte> bytes) const noexcept {
+    const auto byte_less = [](const auto lhs, const auto rhs) {
+        return std::ranges::lexicographical_compare(lhs, rhs);
+    };
+
     auto entry =
-        std::ranges::lower_bound(bytes_to_token_id_, bytes,
-                                 [](const std::pair<std::span<const std::byte>, TokenId>& entry,
-                                    std::span<const std::byte> to_find) {
-                                        return std::ranges::less(entry.first, to_find);
-                                 });
+        std::ranges::lower_bound(bytes_to_token_id_, bytes, byte_less,
+                                 [this](const auto& entry) { return to_span(entry.first); });
+
+    if (entry != bytes_to_token_id_.end() && std::ranges::equal(to_span(entry->first), bytes)) {
+        return entry->second;
+    }
+
+    return {};
 }
 
 [[nodiscard]] std::optional<std::span<const std::byte>> Vocab::lookup_token(TokenId id) const {
@@ -384,7 +490,7 @@ Vocab::token_for_bytes(std::span<const std::byte> bytes) const noexcept {
         throw std::out_of_range{"TokenId larger than vocab size"};
     }
 
-    return token_to_bytes_[id.value];
+    return token_to_bytes_[id.value].transform([this](const ByteRange& b) { return to_span(b); });
 }
 
 } // namespace toby::tokenize

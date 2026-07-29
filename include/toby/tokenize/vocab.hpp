@@ -1,6 +1,5 @@
 #pragma once
 
-#include <compare>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -9,6 +8,7 @@
 #include <optional>
 #include <span>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 // -----------------------------------------------------------------------------
@@ -53,24 +53,32 @@ public:
     [[nodiscard]] static Vocab load_gpt2(const Gpt2VocabFiles& files);
 
     /// Size of the vocab
-    [[nodiscard]] constexpr std::size_t size() const noexcept {
-        return all_tokens_.size();
-    }
+    [[nodiscard]] constexpr std::size_t size() const noexcept { return token_to_bytes_.size(); }
 
     /// @brief  Lookup token by the given ID. Returns the bytes associated with it.
     /// @param id Token id
     /// @return Bytes associated with the token id or nullopt if the token doesn't exist
     [[nodiscard]] std::optional<std::span<const std::byte>> lookup_token(TokenId id) const;
 
-    [[nodiscard]] std::optional<TokenId> token_for_bytes(std::span<const std::byte> bytes) const noexcept;
+    [[nodiscard]] std::optional<TokenId>
+    token_for_bytes(std::span<const std::byte> bytes) const noexcept;
 
 private:
+    struct ByteRange {
+        std::size_t offset;
+        std::size_t length;
+
+        auto operator<=>(const ByteRange&) const = default;
+    };
+
+    [[nodiscard]] std::span<const std::byte> to_span(const ByteRange& range) const;
+
     /// @brief  All tokens contained in the vocab file. String_views returned by the public
     /// API end up pointing into here.
     std::vector<std::byte> all_tokens_;
 
-    std::vector<std::span<const std::byte>> token_to_bytes_;
-    std::vector<std::pair<std::span<std::byte>, TokenId>> bytes_to_token_id_;
+    std::vector<std::optional<ByteRange>> token_to_bytes_;
+    std::vector<std::pair<ByteRange, TokenId>> bytes_to_token_id_;
 };
 
 } // namespace toby::tokenize

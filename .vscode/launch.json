@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug CTest with CodeLLDB",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${cmake.testProgram}",
+      "args": [
+        "${cmake.testArgs}"
+      ],
+      "cwd": "${cmake.testWorkingDirectory}"
+    }
+  ]
+}

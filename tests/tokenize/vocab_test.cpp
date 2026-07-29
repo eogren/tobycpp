@@ -1,11 +1,14 @@
 #include "toby/tokenize/vocab.hpp"
 #include "vocab_detail.hpp"
 
+#include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <cstddef>
 #include <filesystem>
+#include <functional>
+#include <optional>
 #include <span>
 #include <string>
 #include <utility>
@@ -46,16 +49,32 @@ TEST_CASE("token_id tests", "[tokenize][vocab]") {
     }
 }
 
+TEST_CASE("load_gpt2_vocab throws on bad files", "[tokenize][vocab]") {
+    REQUIRE_THROWS_AS(Vocab::load_gpt2({.vocab = fixtures() / "bad_gpt2" / "vocab.json",
+                                        .merges = fixtures() / "bad_gpt2" / "merges.txt"}),
+                      VocabLoadError);
+}
+
+TEST_CASE("load_gpt2_vocab throws on duplicate token ids", "[tokenize][vocab]") {
+    REQUIRE_THROWS_AS(Vocab::load_gpt2({.vocab = fixtures() / "duplicate_gpt2" / "vocab.json",
+                                        .merges = fixtures() / "duplicate_gpt2" / "merges.txt"}),
+                      VocabLoadError);
+}
+
 TEST_CASE("load_gpt2_vocab reads vocab.json and merges.txt", "[tokenize][vocab]") {
     const auto loaded = Vocab::load_gpt2({.vocab = fixtures() / "gpt2" / "vocab.json",
                                           .merges = fixtures() / "gpt2" / "merges.txt"});
 
     SECTION("vocab entries map to their ids incl unicode demapping") {
         CHECK(loaded.size() == 10);
+
         CHECK(loaded.token_for_bytes(literal_bytes("a")) == TokenId{3});
         CHECK(loaded.token_for_bytes(literal_bytes("ab")) == TokenId{5});
         CHECK(loaded.token_for_bytes(literal_bytes(" a")) == TokenId{7});
         CHECK(loaded.token_for_bytes(literal_bytes("<|endoftext|>")) == TokenId{9});
+
+        const auto token = loaded.lookup_token(TokenId{3});
+        CHECK(std::ranges::equal(token.value_or(literal_bytes("")), literal_bytes("a")));
     }
 
     /*
