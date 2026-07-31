@@ -22,14 +22,11 @@ target_include_directories(toby_tokenize
 # lookup are tokenizer implementation details. Keep ICU types out of the public
 # headers so consumers do not inherit the dependency.
 #
-# Boost::unordered is PRIVATE for the same reason, and it is a choice worth
-# revisiting rather than a default. Keeping it private means the map remains a
-# detail of how vocab.cpp builds its eventual public lookups.
 target_link_libraries(toby_tokenize
   PRIVATE
     nlohmann_json::nlohmann_json
-    ICU::uc
     Boost::unordered
+    ICU::uc
     toby::warnings
     toby::sanitizers
     toby::simd)
