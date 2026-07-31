@@ -77,21 +77,29 @@ TEST_CASE("load_gpt2_vocab reads vocab.json and merges.txt", "[tokenize][vocab]"
         CHECK(std::ranges::equal(token.value_or(literal_bytes("")), literal_bytes("a")));
     }
 
-    /*
-    SECTION("merges are in rank order") {
-        REQUIRE(loaded.merges.size() == 3);
-        CHECK(loaded.merges[0] == std::pair<std::string, std::string>{"a", "b"});
-        CHECK(loaded.merges[1] ==
-              std::pair<std::string, std::string>{std::string{g_space_mark}, "a"});
+    const TokenId a_token = TokenId{3};
+    const TokenId b_token = TokenId{4};
+    const TokenId space_token = TokenId{6};
+
+    const TokenId hash_token = TokenId{2};
+
+    SECTION("non-existent merges return nullopt") {
+        const auto aa = loaded.find_merge_target(std::make_pair(a_token, a_token));
+        CHECK(!aa.has_value());
     }
 
-    SECTION("the #version banner is skipped but a '#' merge rule is not") {
+    SECTION("merges are in rank order") {
+        const auto ab = loaded.find_merge_target(std::make_pair(a_token, b_token));
+        CHECK(ab == std::optional{Vocab::MergeTarget{.new_token = TokenId{5}, .rank = 0}});
+
+        const auto space_a = loaded.find_merge_target(std::make_pair(space_token, a_token));
+        CHECK(space_a == std::optional{Vocab::MergeTarget{.new_token = TokenId{7}, .rank = 1}});
+
         // 0x23 maps to itself in the byte<->unicode alphabet, so "# #" is a real
         // merge. A loader that skips every comment-looking line silently drops it.
-        REQUIRE(loaded.merges.size() == 3);
-        CHECK(loaded.merges[2] == std::pair<std::string, std::string>{"#", "#"});
+        const auto hashes = loaded.find_merge_target(std::make_pair(hash_token, hash_token));
+        CHECK(hashes == std::optional{Vocab::MergeTarget{.new_token = TokenId{8}, .rank = 2}});
     }
-        */
 }
 
 TEST_CASE("load_tokenizer_json reads a HuggingFace BPE file", "[tokenize][vocab]") {

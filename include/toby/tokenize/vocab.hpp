@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <span>
 #include <stdexcept>
@@ -43,6 +44,8 @@ struct TokenId {
     auto operator<=>(const TokenId&) const = default;
 };
 
+std::size_t hash_value(TokenId const& t) noexcept;
+
 static_assert(std::constructible_from<TokenId, std::uint32_t>);
 static_assert(!std::default_initializable<TokenId>);
 static_assert(!std::convertible_to<std::uint32_t, TokenId>);
@@ -63,7 +66,31 @@ public:
     [[nodiscard]] std::optional<TokenId>
     token_for_bytes(std::span<const std::byte> bytes) const noexcept;
 
+    /// Represents the target of a merge.
+    struct MergeTarget {
+        /// New token after combining original pair
+        TokenId new_token;
+
+        /// Rank of the merge
+        std::uint32_t rank;
+
+        auto operator<=>(const MergeTarget&) const = default;
+    };
+
+    /// Find the merge target (if any exists) for the given pair
+    [[nodiscard]] std::optional<MergeTarget>
+    find_merge_target(std::pair<TokenId, TokenId> pair) const noexcept;
+
+    Vocab(Vocab&&) noexcept;
+    Vocab& operator=(Vocab&&) noexcept;
+    ~Vocab();
+
+    Vocab(const Vocab&) = delete;
+    Vocab& operator=(const Vocab&) = delete;
+
 private:
+    Vocab();
+
     struct ByteRange {
         std::size_t offset;
         std::size_t length;
@@ -76,6 +103,9 @@ private:
     /// @brief  All tokens contained in the vocab file. String_views returned by the public
     /// API end up pointing into here.
     std::vector<std::byte> all_tokens_;
+
+    struct MergeIndex;
+    std::unique_ptr<MergeIndex> merges_;
 
     std::vector<std::optional<ByteRange>> token_to_bytes_;
     std::vector<std::pair<ByteRange, TokenId>> bytes_to_token_id_;

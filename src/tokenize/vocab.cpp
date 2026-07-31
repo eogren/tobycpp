@@ -5,6 +5,9 @@
 
 #include <algorithm>
 #include <array>
+#include <boost/container_hash/hash.hpp>
+#include <boost/unordered/unordered_flat_map.hpp>
+#include <boost/unordered/unordered_flat_map_fwd.hpp>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -13,6 +16,7 @@
 #include <ios>
 #include <iterator>
 #include <limits>
+#include <memory>
 #include <nlohmann/json.hpp>
 #include <nlohmann/json_fwd.hpp>
 #include <optional>
@@ -256,6 +260,38 @@ template <typename T, std::size_t N> constexpr bool all_unique(const std::array<
 static_assert(all_unique(byte_to_printable_map()));
 static_assert(byte_to_printable_map()[0x20] == 288);
 
+[[nodiscard]] toby::tokenize::TokenId
+find_token_or_throw(const toby::tokenize::detail::RawVocab& raw_vocab, const std::string& token) {
+    auto it = raw_vocab.vocab.find(token);
+    if (it == raw_vocab.vocab.end()) {
+        throw VocabLoadError{std::format("Could not find tokenId for \"{}\"", token)};
+    }
+
+    return toby::tokenize::TokenId{static_cast<uint32_t>(it->second)};
+}
+
+[[nodiscard]] auto merges_to_map(const toby::tokenize::detail::RawVocab& raw_vocab) {
+    std::uint32_t rank = 0;
+    boost::unordered_flat_map<std::pair<toby::tokenize::TokenId, toby::tokenize::TokenId>,
+                              toby::tokenize::Vocab::MergeTarget>
+        ret{};
+    for (const auto& merge : raw_vocab.merges) {
+        auto first_token = find_token_or_throw(raw_vocab, merge.first);
+        auto second_token = find_token_or_throw(raw_vocab, merge.second);
+        auto new_token = find_token_or_throw(raw_vocab, merge.first + merge.second);
+
+        auto merge_info = toby::tokenize::Vocab::MergeTarget{
+            .new_token = new_token,
+            .rank = rank,
+        };
+
+        rank++;
+
+        ret.insert_or_assign(std::make_pair(first_token, second_token), merge_info);
+    }
+
+    return ret;
+}
 } // namespace
 
 namespace toby::tokenize::detail {
@@ -368,18 +404,38 @@ RawVocab load_tokenizer_json(const std::filesystem::path& tokenizer_json) {
 } // namespace toby::tokenize::detail
 
 namespace toby::tokenize {
+struct Vocab::MergeIndex {
+    MergeIndex(boost::unordered_flat_map<std::pair<TokenId, TokenId>, MergeTarget> map_in)
+        : map(std::move(map_in)) {}
+
+    boost::unordered_flat_map<std::pair<TokenId, TokenId>, MergeTarget> map;
+};
+
+Vocab::Vocab() = default;
+Vocab::~Vocab() = default;
+
+Vocab::Vocab(Vocab&&) noexcept = default;
+Vocab& Vocab::operator=(Vocab&&) noexcept = default;
+
 std::span<const std::byte> Vocab::to_span(const ByteRange& range) const {
     auto it = all_tokens_.begin();
     std::advance(it, range.offset);
     return std::span{it, range.length};
 }
 
+std::size_t hash_value(TokenId const& t) noexcept {
+    const boost::hash<std::uint32_t> hasher;
+    return hasher(t.value);
+}
+
 Vocab Vocab::load_gpt2(const Gpt2VocabFiles& files) {
+
     using toby::tokenize::detail::for_each_utf8_code_point;
     using toby::tokenize::detail::Utf8CodePoint;
 
     auto raw_vocab = detail::load_gpt2_vocab(files.vocab, files.merges);
     auto ret = Vocab{};
+    ret.merges_ = std::make_unique<MergeIndex>(merges_to_map(raw_vocab));
 
     auto vocab_size = raw_vocab.vocab.size() + raw_vocab.added_tokens.size();
     if (vocab_size == 0) {
@@ -493,4 +549,17 @@ Vocab::token_for_bytes(std::span<const std::byte> bytes) const noexcept {
     return token_to_bytes_[id.value].transform([this](const ByteRange& b) { return to_span(b); });
 }
 
+[[nodiscard]] std::optional<Vocab::MergeTarget>
+Vocab::find_merge_target(std::pair<TokenId, TokenId> pair) const noexcept {
+    if (merges_ == nullptr) {
+        return {};
+    }
+
+    auto it = merges_->map.find(pair);
+    if (it == merges_->map.end()) {
+        return {};
+    }
+
+    return it->second;
+}
 } // namespace toby::tokenize
