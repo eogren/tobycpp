@@ -12,5 +12,5 @@ TEST_CASE("library_version is non-empty and looks like a version", "[core][versi
 
     REQUIRE_FALSE(version.empty());
     // Expect something of the form "N.N.N".
-    CHECK(version.find('.') != std::string_view::npos);
+    CHECK(version.contains('.'));
 }

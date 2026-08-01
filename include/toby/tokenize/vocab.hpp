@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TOBY_TOKENIZE_VOCAB_HPP
+#define TOBY_TOKENIZE_VOCAB_HPP
 
 #include <concepts>
 #include <cstddef>
@@ -118,3 +119,5 @@ template <> struct std::hash<toby::tokenize::TokenId> {
         return std::hash<std::uint32_t>{}(id.value);
     }
 };
+
+#endif // TOBY_TOKENIZE_VOCAB_HPP

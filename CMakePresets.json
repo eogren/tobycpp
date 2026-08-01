@@ -24,6 +24,20 @@
         "TOBY_WARNINGS_AS_ERRORS": "ON"
       }
     },
+    {
+      "name": "macos-base",
+      "hidden": true,
+      "inherits": "base",
+      "description": "Xcode AppleClang with the system libc++.",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "TOBY_WARNINGS_AS_ERRORS": "ON"
+      }
+    },
 
     {
       "name": "clang-debug",
@@ -67,6 +81,59 @@
         "TOBY_SANITIZE_THREAD": "ON",
         "TOBY_HARDENING": "debug"
       }
+    },
+
+    {
+      "name": "macos-debug",
+      "displayName": "macOS AppleClang Debug",
+      "inherits": "macos-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "TOBY_HARDENING": "extensive"
+      }
+    },
+    {
+      "name": "macos-release",
+      "displayName": "macOS AppleClang RelWithDebInfo",
+      "inherits": "macos-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "TOBY_HARDENING": "fast"
+      }
+    },
+    {
+      "name": "macos-asan",
+      "displayName": "macOS AppleClang Address/UB sanitizers",
+      "inherits": "macos-debug",
+      "cacheVariables": {
+        "TOBY_SANITIZE_ADDRESS": "ON",
+        "TOBY_SANITIZE_UNDEFINED": "ON",
+        "TOBY_HARDENING": "debug"
+      }
+    },
+    {
+      "name": "macos-tsan",
+      "displayName": "macOS AppleClang ThreadSanitizer",
+      "inherits": "macos-debug",
+      "cacheVariables": {
+        "TOBY_SANITIZE_THREAD": "ON",
+        "TOBY_HARDENING": "debug"
+      }
+    },
+    {
+      "name": "macos-tidy",
+      "displayName": "macOS matched LLVM Debug + clang-tidy",
+      "description": "Requires a matched upstream LLVM clang++ and clang-tidy on PATH.",
+      "inherits": "macos-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_CXX_FLAGS": "-stdlib=libc++",
+        "CMAKE_EXE_LINKER_FLAGS": "-stdlib=libc++",
+        "CMAKE_SHARED_LINKER_FLAGS": "-stdlib=libc++",
+        "TOBY_HARDENING": "extensive",
+        "TOBY_ENABLE_CLANG_TIDY": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -74,7 +141,12 @@
     { "name": "clang-release", "configurePreset": "clang-release" },
     { "name": "clang-tidy",    "configurePreset": "clang-tidy" },
     { "name": "clang-asan",    "configurePreset": "clang-asan" },
-    { "name": "clang-tsan",    "configurePreset": "clang-tsan" }
+    { "name": "clang-tsan",    "configurePreset": "clang-tsan" },
+    { "name": "macos-debug",   "configurePreset": "macos-debug" },
+    { "name": "macos-release", "configurePreset": "macos-release" },
+    { "name": "macos-asan",    "configurePreset": "macos-asan" },
+    { "name": "macos-tsan",    "configurePreset": "macos-tsan" },
+    { "name": "macos-tidy",    "configurePreset": "macos-tidy" }
   ],
   "testPresets": [
     {
@@ -85,6 +157,9 @@
     },
     { "name": "clang-debug", "configurePreset": "clang-debug", "inherits": "base" },
     { "name": "clang-asan",  "configurePreset": "clang-asan",  "inherits": "base" },
-    { "name": "clang-tsan",  "configurePreset": "clang-tsan",  "inherits": "base" }
+    { "name": "clang-tsan",  "configurePreset": "clang-tsan",  "inherits": "base" },
+    { "name": "macos-debug", "configurePreset": "macos-debug", "inherits": "base" },
+    { "name": "macos-asan",  "configurePreset": "macos-asan",  "inherits": "base" },
+    { "name": "macos-tsan",  "configurePreset": "macos-tsan",  "inherits": "base" }
   ]
 }

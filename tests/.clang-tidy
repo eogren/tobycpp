@@ -5,12 +5,21 @@
 # library code keeps the full check list from the root .clang-tidy.
 InheritParentConfig: true
 
+# Catch2 uses __COUNTER__ when expanding TEST_CASE, INFO, and CAPTURE. Clang 22
+# diagnoses that token at the expansion site even though Catch2 is a system
+# include, so suppress the compiler diagnostic only while analyzing tests.
+ExtraArgs:
+  - -Wno-c2y-extensions
+
 Checks: >
+  -bugprone-throwing-static-initialization,
   -cppcoreguidelines-avoid-do-while,
   -misc-use-anonymous-namespace,
   -readability-function-cognitive-complexity
 
 # Why each one:
+#   throwing-static-initialization  TEST_CASE registers through a file-static
+#                               Catch2 object whose constructor is not noexcept.
 #   avoid-do-while              CHECK/REQUIRE expand to do { ... } while(false).
 #   use-anonymous-namespace     TEST_CASE emits a file-static dummyFunctionN.
 #   function-cognitive-complexity  SECTION nesting inflates the score of a
