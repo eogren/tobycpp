@@ -7,6 +7,7 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git
   GIT_TAG        v3.7.1 # pin an exact release for reproducible builds
   GIT_SHALLOW    TRUE
+  SYSTEM
 )
 FetchContent_MakeAvailable(Catch2)
 
@@ -20,12 +21,22 @@ add_executable(toby_tests
   tokenize/utf8_test.cpp
   tokenize/vocab_test.cpp)
 
+# Catch2 uses __COUNTER__ to create unique identifiers. Clang 22 diagnoses it
+# under -Wpedantic at each first-party macro invocation even though Catch2 is a
+# system include. Keep this test-only suppression after the warning bundle so
+# the later, more specific flag is authoritative.
+add_library(toby_test_dependency_warnings INTERFACE)
+target_compile_options(toby_test_dependency_warnings
+  INTERFACE
+    $<$<AND:$<COMPILE_LANG_AND_ID:CXX,Clang>,$<VERSION_GREATER_EQUAL:$<CXX_COMPILER_VERSION>,22>>:-Wno-c2y-extensions>)
+
 target_link_libraries(toby_tests
   PRIVATE
     toby::core
     toby::tokenize
     Catch2::Catch2WithMain
     toby::warnings
+    toby_test_dependency_warnings
     toby::sanitizers
     toby::simd)
 

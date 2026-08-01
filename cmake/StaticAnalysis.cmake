@@ -4,6 +4,17 @@
 # explicitly with toby_enable_tidy(<target>).
 
 if(TOBY_ENABLE_CLANG_TIDY)
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+    message(FATAL_ERROR
+      "toby: clang-tidy must run with a matched upstream LLVM toolchain, not "
+      "AppleClang. Install LLVM (for example, `brew install llvm`), put its "
+      "bin directory first on PATH, and configure with the macos-tidy preset.")
+  elseif(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    message(FATAL_ERROR
+      "toby: clang-tidy requires the upstream Clang compiler; found "
+      "'${CMAKE_CXX_COMPILER_ID}'.")
+  endif()
+
   # clang-tidy must match the compiler's major version. A mismatched tidy parses
   # C++23 and the libc++ headers with a different frontend, so it reports bogus
   # diagnostics or -- worse -- silently misses real ones and leaves the build

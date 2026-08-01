@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TOBY_CORE_VERSION_HPP
+#define TOBY_CORE_VERSION_HPP
 
 #include <string_view>
 
@@ -12,3 +13,5 @@ namespace toby::core {
 [[nodiscard]] std::string_view library_version() noexcept;
 
 } // namespace toby::core
+
+#endif // TOBY_CORE_VERSION_HPP

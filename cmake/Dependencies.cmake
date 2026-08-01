@@ -95,6 +95,24 @@ FetchContent_MakeAvailable(nlohmann_json)
 # surface for this job, that avoids coupling our libc++ build to the C++ ABI of
 # whichever compiler built the system ICU package.
 # ---------------------------------------------------------------------------
+if(APPLE)
+  # Homebrew keeps ICU keg-only, so it is intentionally absent from the normal
+  # system search paths. Preserve any user-supplied prefixes, then add the
+  # Homebrew prefix as a convenience when Homebrew and its ICU formula exist.
+  find_program(_toby_brew_exe NAMES brew)
+  if(_toby_brew_exe)
+    execute_process(
+      COMMAND "${_toby_brew_exe}" --prefix icu4c
+      RESULT_VARIABLE _toby_brew_icu_result
+      OUTPUT_VARIABLE _toby_brew_icu_prefix
+      ERROR_QUIET
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if(_toby_brew_icu_result EQUAL 0 AND _toby_brew_icu_prefix)
+      list(APPEND CMAKE_PREFIX_PATH "${_toby_brew_icu_prefix}")
+    endif()
+  endif()
+endif()
+
 find_package(ICU REQUIRED COMPONENTS uc)
 
 # ---------------------------------------------------------------------------

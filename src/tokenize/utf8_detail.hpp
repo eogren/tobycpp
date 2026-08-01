@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TOBY_TOKENIZE_UTF8_DETAIL_HPP
+#define TOBY_TOKENIZE_UTF8_DETAIL_HPP
 
 #include <concepts>
 #include <cstddef>
@@ -55,3 +56,5 @@ void for_each_utf8_code_point(std::string_view text, Callback callback) {
 }
 
 } // namespace toby::tokenize::detail
+
+#endif // TOBY_TOKENIZE_UTF8_DETAIL_HPP

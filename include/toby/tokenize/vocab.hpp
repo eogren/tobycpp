@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TOBY_TOKENIZE_VOCAB_HPP
+#define TOBY_TOKENIZE_VOCAB_HPP
 
 #include <concepts>
 #include <cstddef>
@@ -28,6 +29,8 @@ class VocabLoadError : public std::runtime_error {
 public:
     using std::runtime_error::runtime_error;
 };
+
+#endif // TOBY_TOKENIZE_VOCAB_HPP
 
 struct Gpt2VocabFiles {
     std::filesystem::path vocab;
