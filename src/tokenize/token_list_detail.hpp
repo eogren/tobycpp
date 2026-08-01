@@ -7,6 +7,7 @@
 #include <limits>
 #include <memory>
 #include <span>
+#include <type_traits>
 #include <vector>
 
 namespace toby::tokenize::detail {
@@ -24,14 +25,7 @@ public:
 
     [[nodiscard]] TokenId at(std::size_t n) const;
 
-    /**
-    Merge the token at the given position with its neighbor, replacing with new_token.
-    Eg the token list is 0 -> 1 -> 2, and we call `merge_with_neighbor(0, 100)`, the new list
-    is 100 -> 2. [replaced 0 with 100 and 1 is no longer part of the list].
-     */
-    void merge_with_neighbor(std::size_t position, TokenId new_token);
-
-    class ConstIterator {
+    template <bool IsConst> class BasicIterator {
     public:
         using iterator_concept = std::forward_iterator_tag;
         using iterator_category = std::forward_iterator_tag;
@@ -40,25 +34,44 @@ public:
         using reference = const TokenId&;
         using pointer = const TokenId*;
 
-        ConstIterator() = default;
+        BasicIterator() = default;
+        BasicIterator(const BasicIterator&) = default;
+        BasicIterator(BasicIterator&&) = default;
+        BasicIterator& operator=(const BasicIterator&) = default;
+        BasicIterator& operator=(BasicIterator&&) = default;
+
+        BasicIterator(const BasicIterator<false>& other)
+            requires IsConst;
 
         reference operator*() const;
         pointer operator->() const;
 
-        ConstIterator& operator++();
-        ConstIterator operator++(int);
+        BasicIterator& operator++();
+        BasicIterator operator++(int);
 
-        friend bool operator==(const ConstIterator&, const ConstIterator&) = default;
+        friend bool operator==(const BasicIterator&, const BasicIterator&) = default;
+
+        /** Merge the current token with its neighbor, replacing both with new_token. */
+        void merge_with_neighbor(TokenId new_token)
+            requires(!IsConst);
 
     private:
         friend class TokenList;
+        template <bool> friend class BasicIterator;
 
-        ConstIterator(const TokenList* owner, std::size_t node);
+        using Owner = std::conditional_t<IsConst, const TokenList, TokenList>;
 
-        const TokenList* owner_{};
+        BasicIterator(Owner* owner, std::size_t node);
+
+        Owner* owner_{};
         std::size_t node_{npos};
     };
 
+    using Iterator = BasicIterator<false>;
+    using ConstIterator = BasicIterator<true>;
+
+    [[nodiscard]] Iterator begin();
+    [[nodiscard]] Iterator end();
     [[nodiscard]] ConstIterator begin() const;
     [[nodiscard]] ConstIterator end() const;
 
