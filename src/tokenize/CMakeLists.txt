@@ -4,6 +4,7 @@
 
 add_library(toby_tokenize
   pretokenizer.cpp
+  token_list_detail.cpp
   vocab.cpp)
 add_library(toby::tokenize ALIAS toby_tokenize)
 
