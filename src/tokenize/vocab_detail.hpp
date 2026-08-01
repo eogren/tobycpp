@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TOBY_TOKENIZE_VOCAB_DETAIL_HPP
+#define TOBY_TOKENIZE_VOCAB_DETAIL_HPP
 
 #include <cstdint>
 #include <filesystem>
@@ -34,3 +35,5 @@ struct RawVocab {
 [[nodiscard]] RawVocab load_tokenizer_json(const std::filesystem::path& tokenizer_json);
 
 } // namespace toby::tokenize::detail
+
+#endif // TOBY_TOKENIZE_VOCAB_DETAIL_HPP

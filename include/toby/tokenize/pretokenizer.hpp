@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TOBY_TOKENIZE_PRETOKENIZER_HPP
+#define TOBY_TOKENIZE_PRETOKENIZER_HPP
 
 #include <string_view>
 #include <vector>
@@ -38,3 +39,5 @@ namespace toby::tokenize {
 [[nodiscard]] std::vector<std::string_view> pretokenize(std::string_view text);
 
 } // namespace toby::tokenize
+
+#endif // TOBY_TOKENIZE_PRETOKENIZER_HPP

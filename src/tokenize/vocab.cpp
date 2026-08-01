@@ -112,7 +112,7 @@ std::pair<std::string, std::string> split_merge(std::string_view line,
     const std::string_view left = line.substr(0, space);
     const std::string_view right = line.substr(space + 1);
 
-    if (left.empty() || right.empty() || right.find(' ') != std::string_view::npos) {
+    if (left.empty() || right.empty() || right.contains(' ')) {
         throw VocabLoadError{std::format("{}:{}: merge rule is not exactly two parts: '{}'",
                                          path.string(), line_number, line)};
     }
@@ -248,7 +248,8 @@ static_assert(printable_to_byte_map()[0x20] == std::nullopt);
 static_assert(printable_to_byte_map()[0x20 + 256] == std::byte{0x20});
 
 template <typename T, std::size_t N> constexpr bool all_unique(const std::array<T, N>& values) {
-    for (auto it = values.begin(); it != values.end(); ++it) {
+    for (auto it = values.begin(); it != values.end();
+         ++it) { // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic): bounded array iterator
         if (std::find(std::next(it), values.end(), *it) != values.end()) {
             return false;
         }
