@@ -30,8 +30,6 @@ public:
     using std::runtime_error::runtime_error;
 };
 
-#endif // TOBY_TOKENIZE_VOCAB_HPP
-
 struct Gpt2VocabFiles {
     std::filesystem::path vocab;
     std::filesystem::path merges;
@@ -121,3 +119,5 @@ template <> struct std::hash<toby::tokenize::TokenId> {
         return std::hash<std::uint32_t>{}(id.value);
     }
 };
+
+#endif // TOBY_TOKENIZE_VOCAB_HPP
