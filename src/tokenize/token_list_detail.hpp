@@ -23,8 +23,6 @@ public:
      */
     TokenList(std::shared_ptr<const Vocab> vocab, std::span<const std::byte> bytes_in);
 
-    [[nodiscard]] TokenId at(std::size_t n) const;
-
     template <bool IsConst> class BasicIterator {
     public:
         using iterator_concept = std::forward_iterator_tag;
@@ -35,6 +33,7 @@ public:
         using pointer = const TokenId*;
 
         BasicIterator() = default;
+        ~BasicIterator() = default;
         BasicIterator(const BasicIterator&) = default;
         BasicIterator(BasicIterator&&) = default;
         BasicIterator& operator=(const BasicIterator&) = default;
@@ -76,11 +75,24 @@ public:
     [[nodiscard]] ConstIterator end() const;
 
 private:
+    /**
+        Check internal integrity of the list and throw
+        an exception if it's invalid
+    */
+    void check_integrity() const;
+
     struct Node {
-        Node(TokenId token_id, size_t next) : token(token_id), next(next) {}
+        Node(TokenId token_id, size_t next)
+            : token(token_id), next(next), prev(static_cast<std::ptrdiff_t>(next) - 2) {}
 
         TokenId token;
-        size_t next;
+        std::size_t next;
+        // signed so prev can be -1 on the head node
+        std::ptrdiff_t prev;
+        size_t version{};
+#ifndef NDEBUG
+        bool active = true;
+#endif
     };
 
     std::vector<Node> nodes_;

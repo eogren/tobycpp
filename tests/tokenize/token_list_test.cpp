@@ -8,6 +8,7 @@
 #include <catch2/matchers/catch_matchers_range_equals.hpp>
 #include <cstddef>
 #include <filesystem>
+#include <iterator>
 #include <memory>
 #include <span>
 
@@ -57,4 +58,30 @@ TEST_CASE("tokenlist converts bytes one-by-one at construct time", "[tokenize][t
                            TokenId{6},
                            TokenId{3},
                        }));
+}
+
+TEST_CASE("tokenlist merge successful case", "[tokenize][token_list]") {
+    auto list = build_token_list(literal_bytes(" ab"));
+
+    REQUIRE_THAT(list, RangeEquals(std::array{
+                           TokenId{6},
+                           TokenId{3},
+                           TokenId{4},
+                       }));
+
+    auto it = list.begin();
+    std::advance(it, 1);
+    it.merge_with_neighbor(TokenId{7});
+
+    REQUIRE_THAT(list, RangeEquals(std::array{
+                           TokenId{6},
+                           TokenId{7},
+                       }));
+}
+
+TEST_CASE("tokenlist merge throws at end", "[tokenize][token_list]") {
+    auto list = build_token_list(literal_bytes(" a"));
+    auto it = list.begin();
+    std::advance(it, 1);
+    REQUIRE_THROWS(it.merge_with_neighbor(TokenId{7}));
 }
