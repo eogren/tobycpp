@@ -177,7 +177,7 @@ void TokenList::check_integrity() const {
         }
 
         const auto& next_prev = nodes_.at(node.next).prev;
-        if (next_prev < 0 || static_cast<std::size_t>(next_prev) != cur_index) {
+        if (next_prev < 0 || std::cmp_not_equal(next_prev, cur_index)) {
             throw std::logic_error{
                 std::format("Consistency failure: Node {} has next {}, but next->prev is {}",
                             cur_index, node.next, next_prev)};
