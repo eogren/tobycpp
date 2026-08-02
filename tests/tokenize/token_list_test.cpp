@@ -31,14 +31,14 @@ using Catch::Matchers::RangeEquals;
 
 namespace {
 auto standard_vocab() {
-    return std::make_shared<Vocab>(
+    return std::make_shared<const Vocab>(
         Vocab::load_gpt2({.vocab = fixtures() / "gpt2" / "vocab.json",
                           .merges = fixtures() / "gpt2" / "merges.txt"}));
 }
 
 auto build_token_list(std::span<const std::byte> input) {
     auto vocab = standard_vocab();
-    return TokenList{vocab, input};
+    return TokenList{*vocab, input};
 }
 } // namespace
 

@@ -21,7 +21,7 @@ public:
       byte in the input string into its corresponding token and throw an exception if an unknown
       token is found.
      */
-    TokenList(std::shared_ptr<const Vocab> vocab, std::span<const std::byte> bytes_in);
+    TokenList(const Vocab& vocab, std::span<const std::byte> bytes_in);
 
     template <bool IsConst> class BasicIterator {
     public:
@@ -96,7 +96,6 @@ private:
     };
 
     std::vector<Node> nodes_;
-    std::shared_ptr<const Vocab> vocab_;
 
     static constexpr std::size_t npos = std::numeric_limits<std::size_t>::max();
 };

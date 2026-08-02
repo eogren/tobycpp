@@ -26,18 +26,17 @@ static_assert(std::ranges::forward_range<const TokenList>);
 using toby::tokenize::Vocab;
 
 namespace toby::tokenize::detail {
-TokenList::TokenList(std::shared_ptr<const Vocab> vocab, std::span<const std::byte> bytes_in)
-    : vocab_(std::move(vocab)) {
+TokenList::TokenList(const Vocab& vocab, std::span<const std::byte> bytes_in) {
     if (bytes_in.size() >= std::numeric_limits<std::ptrdiff_t>::max()) {
         throw std::runtime_error{"bytes_in has way too many elements, bailing"};
     }
-    if (vocab_ == nullptr || vocab_->size() == 0) {
+    if (vocab.size() == 0) {
         throw std::invalid_argument{"vocab must not be null or empty"};
     }
 
     nodes_.reserve(bytes_in.size());
     for (const std::byte& b : bytes_in) {
-        auto token = vocab_->token_for_bytes(std::span{&b, 1});
+        auto token = vocab.token_for_bytes(std::span{&b, 1});
         if (!token.has_value()) {
             throw std::invalid_argument{
                 std::format("No token found for {:02x}", std::to_integer<unsigned int>(b))};
