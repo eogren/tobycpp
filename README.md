@@ -10,8 +10,9 @@ Socratic prompt skeleton.
 ## Requirements
 
 - CMake ≥ 3.25, Ninja
-- Linux: Clang 20 + libc++ (`clang-20`, `libc++-20-dev`)
-- macOS: a recent Xcode command-line toolchain and ICU (`brew install icu4c`)
+- Linux: Clang 20 + libc++ (`clang-20`, `libc++-20-dev`) and OpenSSL 3 headers
+- macOS: a recent Xcode command-line toolchain, ICU, and OpenSSL 3
+  (`brew install icu4c openssl@3`)
 - C++23 (uses `std::print`)
 
 On Ubuntu 24.04 (Noble):
@@ -19,7 +20,7 @@ On Ubuntu 24.04 (Noble):
 ```bash
 sudo apt install clang-20 clangd-20 clang-tidy-20 clang-format-20 \
                  libc++-20-dev libc++abi-20-dev lld-20 \
-                 cmake ninja-build
+                 libssl-dev cmake ninja-build
 ```
 
 ## Build & test

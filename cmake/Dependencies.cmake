@@ -19,22 +19,43 @@ include(FetchContent)
 # ---------------------------------------------------------------------------
 # cpp-httplib -- the HTTP layer for toby_server.
 #
-# Single-header, thread-per-request, zero required dependencies. This is the
-# same library llama.cpp's server is built on: more than enough for serving
+# Single-header and thread-per-request. This is the same library llama.cpp's
+# server is built on: more than enough for serving
 # inference, where concurrency is gated by the engine's scheduler, not the
 # socket layer. We can revisit an async framework later if we ever need cheap
 # idle-connection fan-out or WebSockets.
 #
-# The optional OpenSSL/zlib/brotli integrations are opportunistic ("if
-# available") by default, which makes the build non-deterministic across
-# machines. We turn them OFF for a hermetic first cut; flip a flag below when
-# you actually want TLS or compression.
+# HTTPS is required for downloading model and tokenizer assets. Use the
+# platform OpenSSL rather than building a security library through FetchContent:
+# Linux distributions provide the library and CA bundle as maintained system
+# packages; on macOS, Homebrew provides OpenSSL while cpp-httplib loads trust
+# anchors from the Keychain. The small convenience below makes Homebrew's
+# keg-only openssl@3 visible without overriding an explicit OPENSSL_ROOT_DIR.
+#
+# zlib/brotli remain disabled so their opportunistic discovery cannot change
+# the build from one machine to another.
 # ---------------------------------------------------------------------------
 set(TOBY_HTTPLIB_VERSION "v0.51.0" CACHE STRING "cpp-httplib git tag to fetch")
+
+if(APPLE AND NOT DEFINED OPENSSL_ROOT_DIR)
+  find_program(_toby_brew_exe NAMES brew)
+  if(_toby_brew_exe)
+    execute_process(
+      COMMAND "${_toby_brew_exe}" --prefix openssl@3
+      RESULT_VARIABLE _toby_brew_openssl_result
+      OUTPUT_VARIABLE _toby_brew_openssl_prefix
+      ERROR_QUIET
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if(_toby_brew_openssl_result EQUAL 0 AND _toby_brew_openssl_prefix)
+      set(OPENSSL_ROOT_DIR "${_toby_brew_openssl_prefix}")
+    endif()
+  endif()
+endif()
 
 set(HTTPLIB_INSTALL OFF CACHE BOOL "" FORCE)
 set(HTTPLIB_TEST OFF CACHE BOOL "" FORCE)
 set(HTTPLIB_USE_OPENSSL_IF_AVAILABLE OFF CACHE BOOL "" FORCE)
+set(HTTPLIB_REQUIRE_OPENSSL ON CACHE BOOL "" FORCE)
 set(HTTPLIB_USE_ZLIB_IF_AVAILABLE OFF CACHE BOOL "" FORCE)
 set(HTTPLIB_USE_BROTLI_IF_AVAILABLE OFF CACHE BOOL "" FORCE)
 
