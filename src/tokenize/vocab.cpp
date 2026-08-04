@@ -20,6 +20,7 @@
 #include <nlohmann/json.hpp>
 #include <nlohmann/json_fwd.hpp>
 #include <optional>
+#include <ostream>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -427,6 +428,11 @@ std::span<const std::byte> Vocab::to_span(const ByteRange& range) const {
 std::size_t hash_value(TokenId const& t) noexcept {
     const boost::hash<std::uint32_t> hasher;
     return hasher(t.value);
+}
+
+std::ostream& operator<<(std::ostream& out, TokenId id) {
+    out << "TokenId{" << id.value << "}";
+    return out;
 }
 
 Vocab Vocab::load_gpt2(const Gpt2VocabFiles& files) {

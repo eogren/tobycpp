@@ -66,12 +66,12 @@ TEST_CASE("load_gpt2_vocab reads vocab.json and merges.txt", "[tokenize][vocab]"
                                           .merges = fixtures() / "gpt2" / "merges.txt"});
 
     SECTION("vocab entries map to their ids incl unicode demapping") {
-        CHECK(loaded.size() == 10);
+        CHECK(loaded.size() == 13);
 
         CHECK(loaded.token_for_bytes(literal_bytes("a")) == TokenId{3});
         CHECK(loaded.token_for_bytes(literal_bytes("ab")) == TokenId{5});
         CHECK(loaded.token_for_bytes(literal_bytes(" a")) == TokenId{7});
-        CHECK(loaded.token_for_bytes(literal_bytes("<|endoftext|>")) == TokenId{9});
+        CHECK(loaded.token_for_bytes(literal_bytes("<|endoftext|>")) == TokenId{12});
 
         const auto token = loaded.lookup_token(TokenId{3});
         CHECK(std::ranges::equal(token.value_or(literal_bytes("")), literal_bytes("a")));

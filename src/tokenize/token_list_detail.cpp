@@ -1,5 +1,4 @@
-#include "token_list_detail.hpp"
-
+#include "toby/tokenize/detail/token_list.hpp"
 #include "toby/tokenize/vocab.hpp"
 
 #include <cassert>
@@ -16,8 +15,8 @@
 
 using toby::tokenize::detail::TokenList;
 
-static_assert(std::forward_iterator<TokenList::ConstIterator>);
-static_assert(std::forward_iterator<TokenList::Iterator>);
+static_assert(std::bidirectional_iterator<TokenList::ConstIterator>);
+static_assert(std::bidirectional_iterator<TokenList::Iterator>);
 static_assert(std::convertible_to<TokenList::Iterator, TokenList::ConstIterator>);
 static_assert(!std::convertible_to<TokenList::ConstIterator, TokenList::Iterator>);
 static_assert(std::ranges::forward_range<TokenList>);
@@ -26,18 +25,17 @@ static_assert(std::ranges::forward_range<const TokenList>);
 using toby::tokenize::Vocab;
 
 namespace toby::tokenize::detail {
-TokenList::TokenList(std::shared_ptr<const Vocab> vocab, std::span<const std::byte> bytes_in)
-    : vocab_(std::move(vocab)) {
+TokenList::TokenList(const Vocab& vocab, std::span<const std::byte> bytes_in) {
     if (bytes_in.size() >= std::numeric_limits<std::ptrdiff_t>::max()) {
         throw std::runtime_error{"bytes_in has way too many elements, bailing"};
     }
-    if (vocab_ == nullptr || vocab_->size() == 0) {
+    if (vocab.size() == 0) {
         throw std::invalid_argument{"vocab must not be null or empty"};
     }
 
     nodes_.reserve(bytes_in.size());
     for (const std::byte& b : bytes_in) {
-        auto token = vocab_->token_for_bytes(std::span{&b, 1});
+        auto token = vocab.token_for_bytes(std::span{&b, 1});
         if (!token.has_value()) {
             throw std::invalid_argument{
                 std::format("No token found for {:02x}", std::to_integer<unsigned int>(b))};
@@ -91,6 +89,34 @@ TokenList::BasicIterator<IsConst> TokenList::BasicIterator<IsConst>::operator++(
     return previous;
 }
 
+template <bool IsConst>
+TokenList::BasicIterator<IsConst>& TokenList::BasicIterator<IsConst>::operator--() {
+    assert(owner_ != nullptr);
+    assert(node_ <= owner_->nodes_.size());
+
+    // This is inefficient, but decrementing from end() is uncommon so
+    // doing this instead of tracking a valid end param.
+    if (node_ == owner_->nodes_.size()) {
+        node_ = 0;
+
+        while (auto next = owner_->nodes_[node_].next != owner_->nodes_.size()) {
+            node_ = owner_->nodes_[node_].next;
+        }
+    } else {
+        assert(owner_->nodes_[node_].prev != -1);
+        node_ = static_cast<std::size_t>(owner_->nodes_[node_].prev);
+    }
+
+    return *this;
+}
+
+template <bool IsConst>
+TokenList::BasicIterator<IsConst> TokenList::BasicIterator<IsConst>::operator--(int) {
+    auto previous = *this;
+    --(*this);
+    return previous;
+}
+
 template <bool IsConst> const TokenId& TokenList::BasicIterator<IsConst>::operator*() const {
     assert(node_ < owner_->nodes_.size());
 
@@ -128,11 +154,25 @@ void TokenList::BasicIterator<IsConst>::merge_with_neighbor(TokenId new_token)
         new_next.prev = static_cast<std::ptrdiff_t>(node_);
     }
 
-#ifndef NDEBUG
     next_node.active = false;
+    owner_->check_integrity();
+}
+
+template <bool IsConst> std::size_t TokenList::BasicIterator<IsConst>::version() const {
+    auto& node = owner_->nodes_.at(node_);
+#ifndef NDEBUG
+    if (!node.active) {
+        throw std::runtime_error{"Iterator pointing at inactive node"};
+    }
 #endif
 
-    owner_->check_integrity();
+    return node.version;
+}
+
+template <bool IsConst> bool TokenList::BasicIterator<IsConst>::active() const {
+    auto& node = owner_->nodes_.at(node_);
+
+    return node.active;
 }
 
 template class TokenList::BasicIterator<false>;

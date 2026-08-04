@@ -1,11 +1,11 @@
-#pragma once
+#ifndef TOBY_TOKENIZE_DETAIL_TOKEN_LIST_HPP
+#define TOBY_TOKENIZE_DETAIL_TOKEN_LIST_HPP
 
 #include "toby/tokenize/vocab.hpp"
 
 #include <cstddef>
 #include <iterator>
 #include <limits>
-#include <memory>
 #include <span>
 #include <type_traits>
 #include <vector>
@@ -21,12 +21,12 @@ public:
       byte in the input string into its corresponding token and throw an exception if an unknown
       token is found.
      */
-    TokenList(std::shared_ptr<const Vocab> vocab, std::span<const std::byte> bytes_in);
+    TokenList(const Vocab& vocab, std::span<const std::byte> bytes_in);
 
     template <bool IsConst> class BasicIterator {
     public:
-        using iterator_concept = std::forward_iterator_tag;
-        using iterator_category = std::forward_iterator_tag;
+        using iterator_concept = std::bidirectional_iterator_tag;
+        using iterator_category = std::bidirectional_iterator_tag;
         using value_type = TokenId;
         using difference_type = std::ptrdiff_t;
         using reference = const TokenId&;
@@ -48,11 +48,18 @@ public:
         BasicIterator& operator++();
         BasicIterator operator++(int);
 
+        BasicIterator& operator--();
+        BasicIterator operator--(int);
+
+        auto operator<=>(const BasicIterator&) const = default;
         friend bool operator==(const BasicIterator&, const BasicIterator&) = default;
 
         /** Merge the current token with its neighbor, replacing both with new_token. */
         void merge_with_neighbor(TokenId new_token)
             requires(!IsConst);
+
+        [[nodiscard]] std::size_t version() const;
+        [[nodiscard]] bool active() const;
 
     private:
         friend class TokenList;
@@ -90,14 +97,13 @@ private:
         // signed so prev can be -1 on the head node
         std::ptrdiff_t prev;
         size_t version{};
-#ifndef NDEBUG
         bool active = true;
-#endif
     };
 
     std::vector<Node> nodes_;
-    std::shared_ptr<const Vocab> vocab_;
 
     static constexpr std::size_t npos = std::numeric_limits<std::size_t>::max();
 };
 } // namespace toby::tokenize::detail
+
+#endif
