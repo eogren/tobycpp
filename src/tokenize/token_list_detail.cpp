@@ -1,5 +1,4 @@
-#include "token_list_detail.hpp"
-
+#include "toby/tokenize/detail/token_list.hpp"
 #include "toby/tokenize/vocab.hpp"
 
 #include <cassert>

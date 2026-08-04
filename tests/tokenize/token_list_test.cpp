@@ -1,6 +1,6 @@
 
+#include "toby/tokenize/detail/token_list.hpp"
 #include "toby/tokenize/vocab.hpp"
-#include "token_list_detail.hpp"
 
 #include <array>
 #include <catch2/catch_test_macros.hpp>
@@ -84,4 +84,21 @@ TEST_CASE("tokenlist merge throws at end", "[tokenize][token_list]") {
     auto it = list.begin();
     std::advance(it, 1);
     REQUIRE_THROWS(it.merge_with_neighbor(TokenId{7}));
+}
+
+TEST_CASE("tokenlist iterator comparisons", "[tokenize][token_list]") {
+    auto list = build_token_list(literal_bytes(" a"));
+    auto list2 = build_token_list(literal_bytes(" a"));
+
+    auto it = list.begin();
+    auto it2 = list.begin();
+    auto next = std::next(it);
+    auto otherit = list2.begin();
+
+    CHECK(it == it2);
+    CHECK(it < next);
+    CHECK(it2 < next);
+    CHECK(next > it);
+    CHECK(next > it2);
+    CHECK(otherit != it);
 }

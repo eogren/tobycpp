@@ -1,11 +1,11 @@
-#pragma once
+#ifndef TOBY_TOKENIZE_DETAIL_TOKEN_LIST_HPP
+#define TOBY_TOKENIZE_DETAIL_TOKEN_LIST_HPP
 
 #include "toby/tokenize/vocab.hpp"
 
 #include <cstddef>
 #include <iterator>
 #include <limits>
-#include <memory>
 #include <span>
 #include <type_traits>
 #include <vector>
@@ -48,6 +48,7 @@ public:
         BasicIterator& operator++();
         BasicIterator operator++(int);
 
+        auto operator<=>(const BasicIterator&) const = default;
         friend bool operator==(const BasicIterator&, const BasicIterator&) = default;
 
         /** Merge the current token with its neighbor, replacing both with new_token. */
@@ -100,3 +101,5 @@ private:
     static constexpr std::size_t npos = std::numeric_limits<std::size_t>::max();
 };
 } // namespace toby::tokenize::detail
+
+#endif
