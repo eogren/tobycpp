@@ -121,3 +121,10 @@ TEST_CASE("tokenlist iterator bidirectional", "[tokenize][token_list]") {
         CHECK(*it_a == TokenId{6});
     }
 }
+
+TEST_CASE("tokenlist can decrement end", "[tokenlist][token_list]") {
+    auto list = build_token_list(literal_bytes(" a"));
+    auto it = list.end();
+    std::advance(it, -1);
+    CHECK(*it == TokenId{3});
+}

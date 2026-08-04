@@ -97,9 +97,7 @@ private:
         // signed so prev can be -1 on the head node
         std::ptrdiff_t prev;
         size_t version{};
-#ifndef NDEBUG
         bool active = true;
-#endif
     };
 
     std::vector<Node> nodes_;

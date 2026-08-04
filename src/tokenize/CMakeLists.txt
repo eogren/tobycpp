@@ -3,6 +3,7 @@
 # wiring here. The interesting algorithm work still lives with you.
 
 add_library(toby_tokenize
+  gpt2_encoder.cpp
   pretokenizer.cpp
   token_list_detail.cpp
   vocab.cpp)

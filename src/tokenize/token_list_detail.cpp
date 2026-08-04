@@ -92,9 +92,20 @@ TokenList::BasicIterator<IsConst> TokenList::BasicIterator<IsConst>::operator++(
 template <bool IsConst>
 TokenList::BasicIterator<IsConst>& TokenList::BasicIterator<IsConst>::operator--() {
     assert(owner_ != nullptr);
-    assert(node_ < owner_->nodes_.size());
-    assert(owner_->nodes_[node_].prev != -1);
-    node_ = static_cast<std::size_t>(owner_->nodes_[node_].prev);
+    assert(node_ <= owner_->nodes_.size());
+
+    // This is inefficient, but decrementing from end() is uncommon so
+    // doing this instead of tracking a valid end param.
+    if (node_ == owner_->nodes_.size()) {
+        node_ = 0;
+
+        while (auto next = owner_->nodes_[node_].next != owner_->nodes_.size()) {
+            node_ = owner_->nodes_[node_].next;
+        }
+    } else {
+        assert(owner_->nodes_[node_].prev != -1);
+        node_ = static_cast<std::size_t>(owner_->nodes_[node_].prev);
+    }
 
     return *this;
 }
@@ -143,10 +154,7 @@ void TokenList::BasicIterator<IsConst>::merge_with_neighbor(TokenId new_token)
         new_next.prev = static_cast<std::ptrdiff_t>(node_);
     }
 
-#ifndef NDEBUG
     next_node.active = false;
-#endif
-
     owner_->check_integrity();
 }
 
@@ -163,11 +171,6 @@ template <bool IsConst> std::size_t TokenList::BasicIterator<IsConst>::version()
 
 template <bool IsConst> bool TokenList::BasicIterator<IsConst>::active() const {
     auto& node = owner_->nodes_.at(node_);
-#ifndef NDEBUG
-    if (!node.active) {
-        throw std::runtime_error{"Iterator pointing at inactive node"};
-    }
-#endif
 
     return node.active;
 }

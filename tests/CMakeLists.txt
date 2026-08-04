@@ -17,6 +17,7 @@ include(Catch)
 
 add_executable(toby_tests
   core/version_test.cpp
+  tokenize/gpt2_encoder_test.cpp
   tokenize/token_list_test.cpp
   tokenize/pretokenizer_test.cpp
   tokenize/utf8_test.cpp
