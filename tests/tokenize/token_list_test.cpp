@@ -102,3 +102,22 @@ TEST_CASE("tokenlist iterator comparisons", "[tokenize][token_list]") {
     CHECK(next > it2);
     CHECK(otherit != it);
 }
+
+TEST_CASE("tokenlist iterator bidirectional", "[tokenize][token_list]") {
+    auto list = build_token_list(literal_bytes(" a"));
+    auto it_begin = list.begin();
+    auto it_a = std::next(it_begin);
+    CHECK(*it_begin == TokenId{6});
+    CHECK(*it_a == TokenId{3});
+
+    {
+        auto second_it_a = it_a;
+        --second_it_a;
+        CHECK(*second_it_a == TokenId{6});
+    }
+
+    {
+        std::advance(it_a, -1);
+        CHECK(*it_a == TokenId{6});
+    }
+}

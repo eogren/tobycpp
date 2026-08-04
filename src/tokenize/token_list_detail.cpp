@@ -15,8 +15,8 @@
 
 using toby::tokenize::detail::TokenList;
 
-static_assert(std::forward_iterator<TokenList::ConstIterator>);
-static_assert(std::forward_iterator<TokenList::Iterator>);
+static_assert(std::bidirectional_iterator<TokenList::ConstIterator>);
+static_assert(std::bidirectional_iterator<TokenList::Iterator>);
 static_assert(std::convertible_to<TokenList::Iterator, TokenList::ConstIterator>);
 static_assert(!std::convertible_to<TokenList::ConstIterator, TokenList::Iterator>);
 static_assert(std::ranges::forward_range<TokenList>);
@@ -89,6 +89,23 @@ TokenList::BasicIterator<IsConst> TokenList::BasicIterator<IsConst>::operator++(
     return previous;
 }
 
+template <bool IsConst>
+TokenList::BasicIterator<IsConst>& TokenList::BasicIterator<IsConst>::operator--() {
+    assert(owner_ != nullptr);
+    assert(node_ < owner_->nodes_.size());
+    assert(owner_->nodes_[node_].prev != -1);
+    node_ = static_cast<std::size_t>(owner_->nodes_[node_].prev);
+
+    return *this;
+}
+
+template <bool IsConst>
+TokenList::BasicIterator<IsConst> TokenList::BasicIterator<IsConst>::operator--(int) {
+    auto previous = *this;
+    --(*this);
+    return previous;
+}
+
 template <bool IsConst> const TokenId& TokenList::BasicIterator<IsConst>::operator*() const {
     assert(node_ < owner_->nodes_.size());
 
@@ -131,6 +148,28 @@ void TokenList::BasicIterator<IsConst>::merge_with_neighbor(TokenId new_token)
 #endif
 
     owner_->check_integrity();
+}
+
+template <bool IsConst> std::size_t TokenList::BasicIterator<IsConst>::version() const {
+    auto& node = owner_->nodes_.at(node_);
+#ifndef NDEBUG
+    if (!node.active) {
+        throw std::runtime_error{"Iterator pointing at inactive node"};
+    }
+#endif
+
+    return node.version;
+}
+
+template <bool IsConst> bool TokenList::BasicIterator<IsConst>::active() const {
+    auto& node = owner_->nodes_.at(node_);
+#ifndef NDEBUG
+    if (!node.active) {
+        throw std::runtime_error{"Iterator pointing at inactive node"};
+    }
+#endif
+
+    return node.active;
 }
 
 template class TokenList::BasicIterator<false>;

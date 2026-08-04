@@ -25,8 +25,8 @@ public:
 
     template <bool IsConst> class BasicIterator {
     public:
-        using iterator_concept = std::forward_iterator_tag;
-        using iterator_category = std::forward_iterator_tag;
+        using iterator_concept = std::bidirectional_iterator_tag;
+        using iterator_category = std::bidirectional_iterator_tag;
         using value_type = TokenId;
         using difference_type = std::ptrdiff_t;
         using reference = const TokenId&;
@@ -48,12 +48,18 @@ public:
         BasicIterator& operator++();
         BasicIterator operator++(int);
 
+        BasicIterator& operator--();
+        BasicIterator operator--(int);
+
         auto operator<=>(const BasicIterator&) const = default;
         friend bool operator==(const BasicIterator&, const BasicIterator&) = default;
 
         /** Merge the current token with its neighbor, replacing both with new_token. */
         void merge_with_neighbor(TokenId new_token)
             requires(!IsConst);
+
+        [[nodiscard]] std::size_t version() const;
+        [[nodiscard]] bool active() const;
 
     private:
         friend class TokenList;
