@@ -8,6 +8,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <ostream>
 #include <span>
 #include <stdexcept>
 #include <utility>
@@ -44,6 +45,8 @@ struct TokenId {
 
     auto operator<=>(const TokenId&) const = default;
 };
+
+std::ostream& operator<<(std::ostream& out, TokenId id);
 
 std::size_t hash_value(TokenId const& t) noexcept;
 
