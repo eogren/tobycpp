@@ -12,5 +12,9 @@
   },
   "[cpp]": {
     "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+  },
+  "[cmake]": {
+    "editor.defaultFormatter": "alexandar-djordjevic.gersemi-cmake-formatter",
+    "editor.formatOnSave": true
   }
 }
