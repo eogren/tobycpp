@@ -4,8 +4,8 @@
 #   uv tool install pre-commit
 #   pre-commit install
 #
-# The clang-format hook below downloads its own pinned clang-format binary, so
-# you do NOT need a system clang-format for formatting to work.
+# The formatting hooks below download their own pinned binaries, so you do NOT
+# need system clang-format or gersemi installations for formatting to work.
 #
 # clang-tidy is intentionally NOT a pre-commit hook: it needs a compile database
 # and a full build, which is too slow for every commit. Run it via the
@@ -20,6 +20,8 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+      - id: check-json
+        exclude: ^tests/fixtures/hf/malformed\.json$
       - id: check-added-large-files
         args: ["--maxkb=1024"]
       - id: mixed-line-ending
@@ -31,3 +33,8 @@ repos:
     hooks:
       - id: clang-format
         types_or: [c++, c]
+
+  - repo: https://github.com/BlankSpruce/gersemi-pre-commit
+    rev: 0.27.7
+    hooks:
+      - id: gersemi

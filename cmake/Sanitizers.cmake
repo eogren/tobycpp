@@ -17,8 +17,7 @@ endif()
 
 if(TOBY_SANITIZE_THREAD)
   if(TOBY_SANITIZE_ADDRESS OR TOBY_SANITIZE_UNDEFINED)
-    message(FATAL_ERROR
-      "ThreadSanitizer cannot be combined with Address/Undefined sanitizers.")
+    message(FATAL_ERROR "ThreadSanitizer cannot be combined with Address/Undefined sanitizers.")
   endif()
   list(APPEND _toby_sanitizers thread)
 endif()
@@ -29,11 +28,13 @@ if(_toby_sanitizers)
   else()
     list(JOIN _toby_sanitizers "," _toby_sanitizer_arg)
     message(STATUS "toby: sanitizers enabled -> ${_toby_sanitizer_arg}")
-    target_compile_options(toby_sanitizers INTERFACE
-      -fsanitize=${_toby_sanitizer_arg}
-      -fno-omit-frame-pointer
-      -g)
-    target_link_options(toby_sanitizers INTERFACE
-      -fsanitize=${_toby_sanitizer_arg})
+    target_compile_options(
+      toby_sanitizers
+      INTERFACE
+        -fsanitize=${_toby_sanitizer_arg}
+        -fno-omit-frame-pointer
+        -g
+    )
+    target_link_options(toby_sanitizers INTERFACE -fsanitize=${_toby_sanitizer_arg})
   endif()
 endif()

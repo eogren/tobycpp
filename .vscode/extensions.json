@@ -3,6 +3,7 @@
     "editorconfig.editorconfig",
     "llvm-vs-code-extensions.vscode-clangd",
     "ms-vscode.cmake-tools",
+    "alexandar-djordjevic.gersemi-cmake-formatter",
     "vadimcn.vscode-lldb"
   ]
 }

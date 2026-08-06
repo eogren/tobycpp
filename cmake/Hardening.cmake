@@ -24,9 +24,22 @@
 # hardened libc++ headers while Catch2 sees unhardened ones is an ODR violation
 # waiting to happen. Include this module before any add_subdirectory().
 
-set(TOBY_HARDENING "extensive" CACHE STRING
-  "libc++ hardening level: none | fast | extensive | debug")
-set_property(CACHE TOBY_HARDENING PROPERTY STRINGS none fast extensive debug)
+set(
+  TOBY_HARDENING
+  "extensive"
+  CACHE STRING
+  "libc++ hardening level: none | fast | extensive | debug"
+)
+set_property(
+  CACHE
+    TOBY_HARDENING
+  PROPERTY
+    STRINGS
+      none
+      fast
+      extensive
+      debug
+)
 
 string(TOLOWER "${TOBY_HARDENING}" _toby_hardening)
 
@@ -39,18 +52,22 @@ elseif(_toby_hardening STREQUAL "extensive")
 elseif(_toby_hardening STREQUAL "debug")
   set(_toby_hardening_macro _LIBCPP_HARDENING_MODE_DEBUG)
 else()
-  message(FATAL_ERROR
+  message(
+    FATAL_ERROR
     "toby: TOBY_HARDENING must be one of none|fast|extensive|debug, "
-    "got '${TOBY_HARDENING}'.")
+    "got '${TOBY_HARDENING}'."
+  )
 endif()
 
 # The macro is libc++-specific; libstdc++ ignores it silently, which would make
 # this look enabled while doing nothing. Say so rather than pretend.
 if(NOT (CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
   if(NOT _toby_hardening STREQUAL "none")
-    message(WARNING
+    message(
+      WARNING
       "toby: TOBY_HARDENING=${_toby_hardening} requested, but _LIBCPP_HARDENING_MODE "
-      "only affects libc++. No hardening will be applied.")
+      "only affects libc++. No hardening will be applied."
+    )
   endif()
 else()
   message(STATUS "toby: libc++ hardening -> ${_toby_hardening}")

@@ -109,8 +109,8 @@ CMakePresets.json    Toolchain + build presets
 - **Sanitizers:** ASan+UBSan and TSan presets, wired from the start.
 - **Static analysis:** clang-tidy via `clang-tidy` with LLVM 20 on Linux or
   `macos-tidy` with a matched Homebrew LLVM toolchain on macOS.
-- **Formatting:** `.clang-format`, enforced by a pre-commit hook (the hook
-  self-provisions its clang-format binary — no system install needed).
+- **Formatting:** `.clang-format` for C/C++ and `.gersemirc` for CMake, enforced
+  by pre-commit hooks that self-provision their formatter binaries.
 
 Enable the git hooks once:
 
