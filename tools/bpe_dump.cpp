@@ -81,7 +81,7 @@ std::filesystem::path vocab_dir() {
 // exception escape -- getline, string growth and println can all throw, and an
 // exception leaving main is UB-adjacent (std::terminate, no unwinding).
 int run() {
-    toby::tokenize::Gpt2VocabFiles files{
+    const toby::tokenize::Gpt2VocabFiles files{
         .vocab = vocab_dir() / "gpt2" / "vocab.json",
         .merges = vocab_dir() / "gpt2" / "merges.txt",
     };
