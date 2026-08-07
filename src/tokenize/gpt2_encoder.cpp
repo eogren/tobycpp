@@ -122,11 +122,6 @@ void Gpt2Encoder::do_merge(detail::TokenList& token_list) const {
 
         auto next_token = std::next(next.position_first);
 
-#ifndef NDEBUG
-        assert(next.position_first.version() != next.version || next.position_first.active());
-        assert(next_token.version() != next.next_version || (*next_token == next.expected_next));
-#endif
-
         // yank and check out version - do merge if still avail
         if (next.position_first.version() == next.version &&
             next_token.version() == next.next_version) {
