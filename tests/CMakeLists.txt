@@ -101,3 +101,23 @@ elseif(NOT TOBY_UV)
     "uv not found: skipping the pretokenizer differential test. "
     "Install uv to enable it (https://docs.astral.sh/uv/).")
 endif()
+
+set(TOBY_GPT2_VOCAB_DIR "${CMAKE_SOURCE_DIR}/vocab/gpt2")
+
+  if(TOBY_UV
+     AND TARGET bpe_dump
+     AND EXISTS "${TOBY_GPT2_VOCAB_DIR}/vocab.json"
+     AND EXISTS "${TOBY_GPT2_VOCAB_DIR}/merges.txt")
+    add_test(NAME bpe_diff_gpt2
+      COMMAND ${TOBY_UV} run --script
+              ${CMAKE_SOURCE_DIR}/tools/bpe_diff.py
+              $<TARGET_FILE:bpe_dump>)
+
+    set_tests_properties(bpe_diff_gpt2 PROPERTIES
+      TIMEOUT 1200
+      LABELS "differential")
+  elseif(TOBY_UV AND TARGET bpe_dump)
+    message(STATUS
+      "GPT-2 vocabulary not found: skipping the BPE differential test. "
+      "Run ./tools/fetch_vocab.py gpt2 and reconfigure to enable it.")
+  endif()

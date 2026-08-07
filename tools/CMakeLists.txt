@@ -29,3 +29,18 @@ target_link_libraries(vocab_dump
     toby::simd)
 
 toby_enable_tidy(vocab_dump)
+
+add_executable(bpe_dump bpe_dump.cpp)
+
+target_compile_definitions(bpe_dump
+    PRIVATE
+      TOBY_VOCAB_DIR="${CMAKE_SOURCE_DIR}/vocab")
+
+target_link_libraries(bpe_dump
+  PRIVATE
+    toby::tokenize
+    toby::warnings
+    toby::sanitizers
+    toby::simd)
+
+toby_enable_tidy(bpe_dump)

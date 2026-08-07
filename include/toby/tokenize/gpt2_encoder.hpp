@@ -2,6 +2,7 @@
 #define TOBY_TOKENIZE_GPT2_ENCODER_HPP
 
 #include "toby/tokenize/detail/token_list.hpp"
+#include "toby/tokenize/pretokenizer.hpp"
 #include "toby/tokenize/vocab.hpp"
 
 #include <algorithm>
@@ -9,12 +10,24 @@
 #include <iterator>
 #include <memory>
 #include <span>
+#include <string_view>
 
 namespace toby::tokenize {
 
 class Gpt2Encoder {
 public:
     explicit Gpt2Encoder(std::shared_ptr<const Vocab> vocab);
+
+    template <typename OutIter>
+    void encode(std::string_view text, OutIter inserter)
+        requires std::output_iterator<OutIter, TokenId>
+    {
+        auto pieces = pretokenize(text);
+        for (auto piece : pieces) {
+            auto piece_bytes = std::as_bytes(std::span{piece.data(), piece.size()});
+            encode_one(piece_bytes, inserter);
+        }
+    }
 
     template <typename OutIter>
     void encode_one(std::span<const std::byte> bytes, OutIter inserter)
