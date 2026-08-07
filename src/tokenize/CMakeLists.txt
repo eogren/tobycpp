@@ -2,16 +2,16 @@
 # core/ zone: it's yours to write, and the assistant may scaffold tests + build
 # wiring here. The interesting algorithm work still lives with you.
 
-add_library(toby_tokenize
+add_library(
+  toby_tokenize
   gpt2_encoder.cpp
   pretokenizer.cpp
   token_list_detail.cpp
-  vocab.cpp)
+  vocab.cpp
+)
 add_library(toby::tokenize ALIAS toby_tokenize)
 
-target_include_directories(toby_tokenize
-  PUBLIC
-    ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(toby_tokenize PUBLIC ${CMAKE_SOURCE_DIR}/include)
 
 # Strict warnings + sanitizers apply to this code too (PRIVATE: consumers get
 # the include dir but not our flags).
@@ -24,13 +24,15 @@ target_include_directories(toby_tokenize
 # lookup are tokenizer implementation details. Keep ICU types out of the public
 # headers so consumers do not inherit the dependency.
 #
-target_link_libraries(toby_tokenize
+target_link_libraries(
+  toby_tokenize
   PRIVATE
     nlohmann_json::nlohmann_json
     Boost::unordered
     ICU::uc
     toby::warnings
     toby::sanitizers
-    toby::simd)
+    toby::simd
+)
 
 toby_enable_tidy(toby_tokenize)

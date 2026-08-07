@@ -13,12 +13,14 @@ add_subdirectory(tokenize)
 add_executable(toby_server main.cpp)
 add_executable(toby::server ALIAS toby_server)
 
-target_link_libraries(toby_server
+target_link_libraries(
+  toby_server
   PRIVATE
     toby::core
     httplib::httplib
     toby::warnings
     toby::sanitizers
-    toby::simd)
+    toby::simd
+)
 
 toby_enable_tidy(toby_server)

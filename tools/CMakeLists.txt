@@ -6,12 +6,14 @@
 
 add_executable(pretokenize_dump pretokenize_dump.cpp)
 
-target_link_libraries(pretokenize_dump
+target_link_libraries(
+  pretokenize_dump
   PRIVATE
     toby::tokenize
     toby::warnings
     toby::sanitizers
-    toby::simd)
+    toby::simd
+)
 
 toby_enable_tidy(pretokenize_dump)
 
@@ -21,12 +23,14 @@ add_executable(vocab_dump vocab_dump.cpp)
 
 target_include_directories(vocab_dump PRIVATE ${CMAKE_SOURCE_DIR}/src/tokenize)
 
-target_link_libraries(vocab_dump
+target_link_libraries(
+  vocab_dump
   PRIVATE
     toby::tokenize
     toby::warnings
     toby::sanitizers
-    toby::simd)
+    toby::simd
+)
 
 toby_enable_tidy(vocab_dump)
 

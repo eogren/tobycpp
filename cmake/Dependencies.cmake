@@ -41,11 +41,13 @@ if(APPLE AND NOT DEFINED OPENSSL_ROOT_DIR)
   find_program(_toby_brew_exe NAMES brew)
   if(_toby_brew_exe)
     execute_process(
-      COMMAND "${_toby_brew_exe}" --prefix openssl@3
+      COMMAND
+        "${_toby_brew_exe}" --prefix openssl@3
       RESULT_VARIABLE _toby_brew_openssl_result
       OUTPUT_VARIABLE _toby_brew_openssl_prefix
       ERROR_QUIET
-      OUTPUT_STRIP_TRAILING_WHITESPACE)
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
     if(_toby_brew_openssl_result EQUAL 0 AND _toby_brew_openssl_prefix)
       set(OPENSSL_ROOT_DIR "${_toby_brew_openssl_prefix}")
     endif()
@@ -59,12 +61,14 @@ set(HTTPLIB_REQUIRE_OPENSSL ON CACHE BOOL "" FORCE)
 set(HTTPLIB_USE_ZLIB_IF_AVAILABLE OFF CACHE BOOL "" FORCE)
 set(HTTPLIB_USE_BROTLI_IF_AVAILABLE OFF CACHE BOOL "" FORCE)
 
-FetchContent_Declare(httplib
+FetchContent_Declare(
+  httplib
   GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
-  GIT_TAG        ${TOBY_HTTPLIB_VERSION}
-  GIT_SHALLOW    TRUE
+  GIT_TAG ${TOBY_HTTPLIB_VERSION}
+  GIT_SHALLOW TRUE
   SYSTEM
-  EXCLUDE_FROM_ALL)
+  EXCLUDE_FROM_ALL
+)
 
 FetchContent_MakeAvailable(httplib)
 
@@ -89,12 +93,14 @@ set(TOBY_JSON_VERSION "v3.11.3" CACHE STRING "nlohmann/json git tag to fetch")
 set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
 set(JSON_Install OFF CACHE BOOL "" FORCE)
 
-FetchContent_Declare(nlohmann_json
+FetchContent_Declare(
+  nlohmann_json
   GIT_REPOSITORY https://github.com/nlohmann/json.git
-  GIT_TAG        ${TOBY_JSON_VERSION}
-  GIT_SHALLOW    TRUE
+  GIT_TAG ${TOBY_JSON_VERSION}
+  GIT_SHALLOW TRUE
   SYSTEM
-  EXCLUDE_FROM_ALL)
+  EXCLUDE_FROM_ALL
+)
 
 FetchContent_MakeAvailable(nlohmann_json)
 
@@ -123,11 +129,13 @@ if(APPLE)
   find_program(_toby_brew_exe NAMES brew)
   if(_toby_brew_exe)
     execute_process(
-      COMMAND "${_toby_brew_exe}" --prefix icu4c
+      COMMAND
+        "${_toby_brew_exe}" --prefix icu4c
       RESULT_VARIABLE _toby_brew_icu_result
       OUTPUT_VARIABLE _toby_brew_icu_prefix
       ERROR_QUIET
-      OUTPUT_STRIP_TRAILING_WHITESPACE)
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
     if(_toby_brew_icu_result EQUAL 0 AND _toby_brew_icu_prefix)
       list(APPEND CMAKE_PREFIX_PATH "${_toby_brew_icu_prefix}")
     endif()
@@ -169,9 +177,12 @@ find_package(ICU REQUIRED COMPONENTS uc)
 # dependency here that is genuinely reproducible -- a git tag can be moved.
 # ---------------------------------------------------------------------------
 set(TOBY_BOOST_VERSION "1.91.0-1" CACHE STRING "Boost release archive to fetch")
-set(TOBY_BOOST_SHA256
-    "cc5dc5006ecbdf0051f90979be31b4eee5987d9ae14ae9fb9c03cfa43fa3cdad"
-    CACHE STRING "SHA256 of the Boost CMake release archive")
+set(
+  TOBY_BOOST_SHA256
+  "cc5dc5006ecbdf0051f90979be31b4eee5987d9ae14ae9fb9c03cfa43fa3cdad"
+  CACHE STRING
+  "SHA256 of the Boost CMake release archive"
+)
 
 # The list of Boost libraries to build. Transitive dependencies (Assert, Config,
 # ContainerHash, Core, Mp11, ThrowException, ...) are resolved automatically --
@@ -198,13 +209,16 @@ set(BOOST_ENABLE_CMAKE ON)
 # Configure them one at a time, or delete build/_shared and retry.
 set(TOBY_DEPS_CACHE ${CMAKE_SOURCE_DIR}/build/_shared)
 
-FetchContent_Declare(Boost
-  URL https://github.com/boostorg/boost/releases/download/boost-${TOBY_BOOST_VERSION}/boost-${TOBY_BOOST_VERSION}-cmake.tar.xz
+FetchContent_Declare(
+  Boost
+  URL
+    https://github.com/boostorg/boost/releases/download/boost-${TOBY_BOOST_VERSION}/boost-${TOBY_BOOST_VERSION}-cmake.tar.xz
   URL_HASH SHA256=${TOBY_BOOST_SHA256}
   DOWNLOAD_DIR ${TOBY_DEPS_CACHE}/downloads
-  SOURCE_DIR   ${TOBY_DEPS_CACHE}/boost-src
+  SOURCE_DIR ${TOBY_DEPS_CACHE}/boost-src
   DOWNLOAD_EXTRACT_TIMESTAMP TRUE
   SYSTEM
-  EXCLUDE_FROM_ALL)
+  EXCLUDE_FROM_ALL
+)
 
 FetchContent_MakeAvailable(Boost)
