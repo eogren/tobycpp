@@ -25,6 +25,19 @@
       }
     },
     {
+      "name": "clang-cuda",
+      "displayName": "Clang 20 + libc++ Debug + CUDA runtime",
+      "description": "Adds libcudart to the Debug build. Needs the CUDA toolkit; pass -DCUDAToolkit_ROOT=... if it is not in /usr/local/cuda.",
+      "inherits": "clang-debug",
+      "cacheVariables": { "TOBY_ENABLE_CUDA": "ON" }
+    },
+    {
+      "name": "clang-cuda-release",
+      "displayName": "Clang 20 + libc++ RelWithDebInfo + CUDA runtime",
+      "inherits": "clang-release",
+      "cacheVariables": { "TOBY_ENABLE_CUDA": "ON" }
+    },
+    {
       "name": "macos-base",
       "hidden": true,
       "inherits": "base",
@@ -142,6 +155,8 @@
     { "name": "clang-tidy",    "configurePreset": "clang-tidy" },
     { "name": "clang-asan",    "configurePreset": "clang-asan" },
     { "name": "clang-tsan",    "configurePreset": "clang-tsan" },
+    { "name": "clang-cuda",    "configurePreset": "clang-cuda" },
+    { "name": "clang-cuda-release", "configurePreset": "clang-cuda-release" },
     { "name": "macos-debug",   "configurePreset": "macos-debug" },
     { "name": "macos-release", "configurePreset": "macos-release" },
     { "name": "macos-asan",    "configurePreset": "macos-asan" },
@@ -158,6 +173,7 @@
     { "name": "clang-debug", "configurePreset": "clang-debug", "inherits": "base" },
     { "name": "clang-asan",  "configurePreset": "clang-asan",  "inherits": "base" },
     { "name": "clang-tsan",  "configurePreset": "clang-tsan",  "inherits": "base" },
+    { "name": "clang-cuda",  "configurePreset": "clang-cuda",  "inherits": "base" },
     { "name": "macos-debug", "configurePreset": "macos-debug", "inherits": "base" },
     { "name": "macos-asan",  "configurePreset": "macos-asan",  "inherits": "base" },
     { "name": "macos-tsan",  "configurePreset": "macos-tsan",  "inherits": "base" }

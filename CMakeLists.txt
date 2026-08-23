@@ -47,6 +47,11 @@ option(TOBY_ENABLE_CLANG_TIDY "Run clang-tidy during the build" OFF)
 option(TOBY_BUILD_TESTS "Build the unit test suite" ON)
 option(TOBY_BUILD_TOOLS "Build developer tools in tools/" ON)
 
+# GPU support. OFF by default so a plain configure works on any machine (and on
+# macOS, where CUDA does not exist at all); ON makes a missing toolkit a hard
+# error rather than a silent CPU-only build. See cmake/Cuda.cmake.
+option(TOBY_ENABLE_CUDA "Build with CUDA runtime support (headers + libcudart)" OFF)
+
 # SIMD codegen: set the target CPU arch so vectorization gets full width.
 # (std::simd/experimental::simd is NOT wired -- unusable on libc++ 19; see cmake/Simd.cmake.)
 set(
@@ -73,6 +78,7 @@ include(CompilerWarnings)
 include(Sanitizers)
 include(StaticAnalysis)
 include(Simd)
+include(Cuda)
 
 # Must precede Dependencies and add_subdirectory(): hardening is applied with
 # add_compile_definitions() at directory scope so that first-party code and the

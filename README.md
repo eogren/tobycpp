@@ -48,9 +48,30 @@ ctest --preset macos-debug
 ```
 
 Other presets: `clang-release`, `clang-asan` (Address+UB), `clang-tsan`
-(Thread), plus corresponding `macos-*` presets. Linux static analysis uses
-`clang-tidy`; macOS uses `macos-tidy` as described below.
+(Thread), `clang-cuda` (see below), plus corresponding `macos-*` presets. Linux
+static analysis uses `clang-tidy`; macOS uses `macos-tidy` as described below.
 Run `cmake --list-presets` to see them all.
+
+### CUDA
+
+GPU support is off by default; `-DTOBY_ENABLE_CUDA=ON` (or the `clang-cuda` /
+`clang-cuda-release` presets) links first-party targets against the CUDA
+runtime, and a missing toolkit is then a configure error rather than a silent
+CPU-only build. Only the runtime API is wired -- `cudaMalloc`, `cudaMemcpy`,
+streams, events. There is no `.cu` compilation and therefore no dependency on
+`nvcc`; `cmake/Cuda.cmake` documents what changes when kernels arrive.
+
+Requires an NVIDIA driver and the CUDA toolkit (headers + `libcudart`).
+CMake finds it via `nvcc` on `PATH`, then `CUDAToolkit_ROOT`/`CUDA_PATH`, then
+`/usr/local/cuda`; point it elsewhere with `-DCUDAToolkit_ROOT=...`.
+
+```bash
+cmake --preset clang-cuda
+cmake --build --preset clang-cuda
+
+# Driver/toolkit sanity check: device properties + a memcpy round trip
+./build/clang-cuda/bin/cuda_probe
+```
 
 ### clang-tidy on macOS
 

@@ -127,7 +127,6 @@ void Gpt2Encoder::do_merge(detail::TokenList& token_list) const {
             next_token.version() == next.next_version) {
             next.position_first.merge_with_neighbor(next.new_token);
 
-            // TODO insert new merge opportunities
             if (next.position_first != token_list.begin()) {
                 // (prev, new this)
                 auto prev_it = std::prev(next.position_first);

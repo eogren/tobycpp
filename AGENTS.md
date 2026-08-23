@@ -40,7 +40,9 @@ there. Want that?"
 
 If the human *explicitly and unambiguously* overrides this for a specific file
 ("I give up on X, just write it"), you may — but first confirm, and prefer
-leaving a `// TODO(you): understand and rewrite this` marker.
+leaving a `// TODO(you): review and remove this marker` comment. The marker asks
+the human to review and take ownership of the implementation; it does not imply
+that the code is known to be defective or must be rewritten.
 
 ## 2. What you SHOULD actively help with (the scaffolding)
 
@@ -90,6 +92,10 @@ cmake --preset clang-tsan && ctest --preset clang-tsan
 
 # Static analysis
 cmake --preset clang-tidy && cmake --build --preset clang-tidy
+
+# With the CUDA runtime (off by default; needs the toolkit + an NVIDIA driver)
+cmake --preset clang-cuda && cmake --build --preset clang-cuda
+./build/clang-cuda/bin/cuda_probe
 ```
 
 ## 5. Conventions

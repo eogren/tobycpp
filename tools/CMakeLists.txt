@@ -36,15 +36,33 @@ toby_enable_tidy(vocab_dump)
 
 add_executable(bpe_dump bpe_dump.cpp)
 
-target_compile_definitions(bpe_dump
-    PRIVATE
-      TOBY_VOCAB_DIR="${CMAKE_SOURCE_DIR}/vocab")
+target_compile_definitions(bpe_dump PRIVATE TOBY_VOCAB_DIR="${CMAKE_SOURCE_DIR}/vocab")
 
-target_link_libraries(bpe_dump
+target_link_libraries(
+  bpe_dump
   PRIVATE
     toby::tokenize
     toby::warnings
     toby::sanitizers
-    toby::simd)
+    toby::simd
+)
 
 toby_enable_tidy(bpe_dump)
+
+# cuda_probe answers "is the GPU side of this machine actually usable" before any
+# engine code depends on it. Only built with -DTOBY_ENABLE_CUDA=ON, since without
+# it toby::cuda is a stub with no runtime behind it.
+if(TOBY_ENABLE_CUDA)
+  add_executable(cuda_probe cuda_probe.cpp)
+
+  target_link_libraries(
+    cuda_probe
+    PRIVATE
+      toby::cuda
+      toby::warnings
+      toby::sanitizers
+      toby::simd
+  )
+
+  toby_enable_tidy(cuda_probe)
+endif()

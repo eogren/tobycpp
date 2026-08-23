@@ -10,6 +10,8 @@
 # works end to end (build -> link -> test). Replace it as you build the engine.
 # =============================================================================
 
+add_subdirectory(safetensors)
+
 add_library(toby_core version.cpp)
 add_library(toby::core ALIAS toby_core)
 

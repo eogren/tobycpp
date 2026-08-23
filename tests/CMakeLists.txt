@@ -25,6 +25,14 @@ add_executable(
   tokenize/vocab_test.cpp
 )
 
+add_executable(
+  toby_safetensors_tests
+  safetensors/align_test.cpp
+  safetensors/file_test.cpp
+  safetensors/safetensors_test.cpp
+  safetensors/tensor_test.cpp
+)
+
 # Catch2 uses __COUNTER__ to create unique identifiers. Clang 22 diagnoses it
 # under -Wpedantic at each first-party macro invocation even though Catch2 is a
 # system include. Keep this test-only suppression after the warning bundle so
@@ -48,6 +56,17 @@ target_link_libraries(
     toby::simd
 )
 
+target_link_libraries(
+  toby_safetensors_tests
+  PRIVATE
+    toby::safetensors
+    Catch2::Catch2WithMain
+    toby::warnings
+    toby_test_dependency_warnings
+    toby::sanitizers
+    toby::simd
+)
+
 # Fixture files are read at run time, and CTest runs tests from the build tree,
 # so the source-tree path has to be compiled in. Baked as a define rather than
 # resolved relative to argv[0]: that keeps the tests runnable straight from the
@@ -57,13 +76,24 @@ target_compile_definitions(
   PRIVATE
     TOBY_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
 )
+target_compile_definitions(
+  toby_safetensors_tests
+  PRIVATE
+    TOBY_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
+)
 
 # Loader tests intentionally exercise the private parsed representation until
 # the decoded public Vocab exists.
 target_include_directories(toby_tests PRIVATE ${CMAKE_SOURCE_DIR}/src/tokenize)
+target_include_directories(toby_safetensors_tests PRIVATE ${CMAKE_SOURCE_DIR}/src/core)
+
+# Header-only test helpers, included as "support/<name>.hpp" from any suite.
+target_include_directories(toby_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(toby_safetensors_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Lint first-party test code too (but never Catch2's own sources).
 toby_enable_tidy(toby_tests)
+toby_enable_tidy(toby_safetensors_tests)
 
 # Registers each TEST_CASE as an individual CTest test.
 #
@@ -75,6 +105,7 @@ catch_discover_tests(toby_tests
   PROPERTIES
     TIMEOUT 30
 )
+catch_discover_tests(toby_safetensors_tests)
 
 # ---------------------------------------------------------------------------
 # Differential test: the real pre-tokenizer vs. the GPT-2 regex.
@@ -122,20 +153,36 @@ endif()
 
 set(TOBY_GPT2_VOCAB_DIR "${CMAKE_SOURCE_DIR}/vocab/gpt2")
 
-  if(TOBY_UV
-     AND TARGET bpe_dump
-     AND EXISTS "${TOBY_GPT2_VOCAB_DIR}/vocab.json"
-     AND EXISTS "${TOBY_GPT2_VOCAB_DIR}/merges.txt")
-    add_test(NAME bpe_diff_gpt2
-      COMMAND ${TOBY_UV} run --script
-              ${CMAKE_SOURCE_DIR}/tools/bpe_diff.py
-              $<TARGET_FILE:bpe_dump>)
+if(
+  TOBY_UV
+  AND
+    TARGET
+      bpe_dump
+  AND
+    EXISTS
+      "${TOBY_GPT2_VOCAB_DIR}/vocab.json"
+  AND
+    EXISTS
+      "${TOBY_GPT2_VOCAB_DIR}/merges.txt"
+)
+  add_test(
+    NAME bpe_diff_gpt2
+    COMMAND
+      ${TOBY_UV} run --script ${CMAKE_SOURCE_DIR}/tools/bpe_diff.py $<TARGET_FILE:bpe_dump>
+  )
 
-    set_tests_properties(bpe_diff_gpt2 PROPERTIES
-      TIMEOUT 1200
-      LABELS "differential")
-  elseif(TOBY_UV AND TARGET bpe_dump)
-    message(STATUS
-      "GPT-2 vocabulary not found: skipping the BPE differential test. "
-      "Run ./tools/fetch_vocab.py gpt2 and reconfigure to enable it.")
-  endif()
+  set_tests_properties(
+    bpe_diff_gpt2
+    PROPERTIES
+      TIMEOUT
+        1200
+      LABELS
+        "differential"
+  )
+elseif(TOBY_UV AND TARGET bpe_dump)
+  message(
+    STATUS
+    "GPT-2 vocabulary not found: skipping the BPE differential test. "
+    "Run ./tools/fetch_vocab.py gpt2 and reconfigure to enable it."
+  )
+endif()
