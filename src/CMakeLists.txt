@@ -18,6 +18,7 @@ target_link_libraries(
   PRIVATE
     toby::core
     httplib::httplib
+    spdlog::spdlog
     toby::warnings
     toby::sanitizers
     toby::simd

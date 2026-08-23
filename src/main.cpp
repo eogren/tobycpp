@@ -1,9 +1,9 @@
 #include "toby/core/version.hpp"
 
-#include <cstdio>
 #include <exception>
 #include <httplib.h>
-#include <print>
+#include <spdlog/cfg/env.h>
+#include <spdlog/spdlog.h>
 
 // Entry point / server bootstrap. This is plumbing, not the core learning
 // material -- it exists to give you a running process to hang the engine off of.
@@ -12,6 +12,9 @@
 // manager / load balancer has something to poll. Real request handling
 // (completions, streaming, etc.) hangs off toby::core once the engine exists.
 int main() {
+    // Default level is "info"; override per-run with e.g. `SPDLOG_LEVEL=debug ./toby_server`.
+    spdlog::cfg::load_env_levels();
+
     try {
         constexpr const char* host = "127.0.0.1";
         constexpr int port = 8080;
@@ -25,21 +28,19 @@ int main() {
             res.set_content("ok\n", "text/plain");
         });
 
-        std::println("toby inference server {}", toby::core::library_version());
-        std::println("listening on http://{}:{}  (GET /healthz)", host, port);
+        spdlog::info("toby inference server {}", toby::core::library_version());
+        spdlog::info("listening on http://{}:{}  (GET /healthz)", host, port);
 
         if (!svr.listen(host, port)) {
-            std::println(stderr, "error: failed to bind {}:{}", host, port);
+            spdlog::error("failed to bind {}:{}", host, port);
             return 1;
         }
         return 0;
     } catch (const std::exception& error) {
-        std::fputs("fatal error: ", stderr);
-        std::fputs(error.what(), stderr);
-        std::fputc('\n', stderr);
+        spdlog::critical("fatal error: {}", error.what());
         return 1;
     } catch (...) {
-        std::fputs("fatal error: unknown exception\n", stderr);
+        spdlog::critical("fatal error: unknown exception");
         return 1;
     }
 }

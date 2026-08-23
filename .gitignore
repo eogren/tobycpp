@@ -31,6 +31,9 @@ _deps/
 # is 10MB+) and reproducible from that script, so they stay out of git.
 /vocab/
 
+# Model weights are large, locally downloaded artifacts and must not be committed.
+/weights/
+
 # Sanitizer / profiling artifacts
 *.profraw
 *.profdata

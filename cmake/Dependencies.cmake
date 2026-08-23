@@ -105,6 +105,35 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(nlohmann_json)
 
 # ---------------------------------------------------------------------------
+# spdlog -- structured logging.
+#
+# Built from source rather than header-only (SPDLOG_HEADER_ONLY off) so its
+# formatting machinery isn't recompiled into every translation unit that logs.
+# It brings its own bundled fmt; that's fine to leave enabled (SPDLOG_FMT_EXTERNAL
+# off) since we don't otherwise depend on fmt (project code uses std::format).
+#
+# SPDLOG_INSTALL/BUILD_EXAMPLES/BUILD_TESTS off for the same reason as the other
+# deps here: we only want the library, not its install rules or test suite.
+# ---------------------------------------------------------------------------
+set(TOBY_SPDLOG_VERSION "v1.17.0" CACHE STRING "spdlog git tag to fetch")
+
+set(SPDLOG_INSTALL OFF CACHE BOOL "" FORCE)
+set(SPDLOG_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(SPDLOG_FMT_EXTERNAL OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+  spdlog
+  GIT_REPOSITORY https://github.com/gabime/spdlog.git
+  GIT_TAG ${TOBY_SPDLOG_VERSION}
+  GIT_SHALLOW TRUE
+  SYSTEM
+  EXCLUDE_FROM_ALL
+)
+
+FetchContent_MakeAvailable(spdlog)
+
+# ---------------------------------------------------------------------------
 # ICU4C -- UTF-8 traversal and Unicode character properties.
 #
 # The pre-tokenizer needs both halves of Unicode handling: walking UTF-8 while
