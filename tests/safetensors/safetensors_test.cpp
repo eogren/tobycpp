@@ -2,6 +2,7 @@
 #include "toby/safetensors/safetensors.hpp"
 #include "toby/safetensors/tensor.hpp"
 
+#include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <cstdint>
 #include <cstring>
