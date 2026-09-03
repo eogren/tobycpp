@@ -236,7 +236,12 @@ set(BOOST_ENABLE_CMAKE ON)
 #
 # The one caveat: configuring two presets *concurrently* can race on the extract.
 # Configure them one at a time, or delete build/_shared and retry.
-set(TOBY_DEPS_CACHE ${CMAKE_SOURCE_DIR}/build/_shared)
+set(
+  TOBY_DEPS_CACHE
+  "${CMAKE_SOURCE_DIR}/build/_shared"
+  CACHE PATH
+  "Location for the shared FetchContent download/extract cache (see comment above)"
+)
 
 FetchContent_Declare(
   Boost
