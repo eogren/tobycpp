@@ -48,6 +48,17 @@ if(NOT CMAKE_CUDA_ARCHITECTURES)
   )
 endif()
 
+# nvcc's default host compiler (found by probing PATH/cc) is whatever system
+# compiler it ships expecting -- typically g++, never libc++-aware. Every host
+# executable in this tree links with -stdlib=libc++ (see the clang presets), and
+# that flag reaches nvcc's link step too since CMAKE_EXE_LINKER_FLAGS is global
+# and not language-scoped. Point nvcc at the same Clang the rest of the project
+# uses so its host link step understands -stdlib=libc++ instead of erroring out
+# on an unrecognized g++ flag.
+if(NOT DEFINED CMAKE_CUDA_HOST_COMPILER AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  set(CMAKE_CUDA_HOST_COMPILER "${CMAKE_CXX_COMPILER}" CACHE FILEPATH "Host compiler used by nvcc")
+endif()
+
 # This is deliberately guarded by TOBY_ENABLE_CUDA. CPU-only configurations --
 # including every macOS preset -- never probe for nvcc.
 enable_language(CUDA)
@@ -79,6 +90,5 @@ message(
 )
 
 # Keep the boundary between nvcc-compiled code and the libc++ C++23 host code
-# narrow and ABI-neutral (plain-C launcher functions and CUDA runtime types).
-# That lets nvcc use its supported default host compiler without leaking one
-# standard library's objects or exceptions into the other side.
+# narrow (plain-C launcher functions and CUDA runtime types), so nvcc has to
+# parse as little heavy C++ template code as possible.

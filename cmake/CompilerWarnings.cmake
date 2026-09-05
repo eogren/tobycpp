@@ -39,12 +39,14 @@ target_compile_options(toby_warnings INTERFACE "$<$<COMPILE_LANGUAGE:CXX>:${_tob
 
 # nvcc needs host warnings passed through explicitly. Keep this set smaller
 # than the C++ set: several otherwise useful Clang warnings do not exist in the
-# GCC versions nvcc commonly selects as its host compiler.
+# GCC versions nvcc commonly selects as its host compiler, and -Wpedantic is
+# unusable here regardless of host compiler -- nvcc's cudafe-generated
+# intermediate files use GNU-style `# N "file"` line markers, which Clang's
+# -Wpedantic flags as -Wgnu-line-marker on code we never wrote.
 set(
   _toby_cuda_host_warnings
   -Wall
   -Wextra
-  -Wpedantic
 )
 if(TOBY_WARNINGS_AS_ERRORS)
   list(APPEND _toby_cuda_host_warnings -Werror)
