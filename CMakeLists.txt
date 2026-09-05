@@ -48,9 +48,19 @@ option(TOBY_BUILD_TESTS "Build the unit test suite" ON)
 option(TOBY_BUILD_TOOLS "Build developer tools in tools/" ON)
 
 # GPU support. OFF by default so a plain configure works on any machine (and on
-# macOS, where CUDA does not exist at all); ON makes a missing toolkit a hard
-# error rather than a silent CPU-only build. See cmake/Cuda.cmake.
-option(TOBY_ENABLE_CUDA "Build with CUDA runtime support (headers + libcudart)" OFF)
+# macOS, where CUDA does not exist at all); ON makes a missing compiler/toolkit
+# a hard error rather than a silent CPU-only build. See cmake/Cuda.cmake.
+option(TOBY_ENABLE_CUDA "Build with CUDA kernel and runtime support" OFF)
+
+# `native` is the fast, low-friction default for a local learning build. A
+# headless builder (or a binary intended for another machine) must replace it
+# with explicit compute capabilities, for example 120 or 90-real;120-real.
+set(
+  CMAKE_CUDA_ARCHITECTURES
+  "native"
+  CACHE STRING
+  "CUDA compute capabilities; use 'native' locally or an explicit list for portable builds"
+)
 
 # SIMD codegen: set the target CPU arch so vectorization gets full width.
 # (std::simd/experimental::simd is NOT wired -- unusable on libc++ 19; see cmake/Simd.cmake.)

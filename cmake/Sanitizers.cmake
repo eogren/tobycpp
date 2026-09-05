@@ -31,10 +31,12 @@ if(_toby_sanitizers)
     target_compile_options(
       toby_sanitizers
       INTERFACE
-        -fsanitize=${_toby_sanitizer_arg}
-        -fno-omit-frame-pointer
-        -g
+        "$<$<COMPILE_LANGUAGE:CXX>:-fsanitize=${_toby_sanitizer_arg};-fno-omit-frame-pointer;-g>"
     )
-    target_link_options(toby_sanitizers INTERFACE -fsanitize=${_toby_sanitizer_arg})
+    target_link_options(
+      toby_sanitizers
+      INTERFACE
+        $<$<LINK_LANG_AND_ID:CXX,Clang,AppleClang>:-fsanitize=${_toby_sanitizer_arg}>
+    )
   endif()
 endif()

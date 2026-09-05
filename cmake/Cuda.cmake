@@ -1,6 +1,6 @@
 # Defines an INTERFACE target `toby_cuda` carrying what first-party code needs to
-# call the CUDA *runtime* API -- cudaMalloc/cudaFree/cudaMemcpy, streams, events,
-# and device queries. Link it PRIVATE alongside toby::warnings and friends.
+# compile CUDA kernels and call the runtime API. Link it PRIVATE alongside
+# toby::warnings and friends.
 #
 # The target always exists. When CUDA is off (or unavailable, as on macOS) it is
 # an empty stub that only defines TOBY_HAVE_CUDA=0, so a target's link list does
@@ -10,17 +10,10 @@
 #     #  include <cuda_runtime.h>
 #     #endif
 #
-# NO `enable_language(CUDA)` HERE -- ON PURPOSE.
-#
-# Enabling the CUDA language makes CMake probe for and validate nvcc at configure
-# time, which we do not need to *call* the runtime: cuda_runtime.h is ordinary
-# C++, and libcudart is an ordinary shared library. Any host compiler links it.
-# Adding a .cu file later is a contained change; see the recipe at the bottom.
-#
 # Discovery is explicit rather than opportunistic (same reasoning as the
 # zlib/brotli switches in Dependencies.cmake): with TOBY_ENABLE_CUDA=ON a missing
-# toolkit is a hard configure error, so a machine never silently produces a
-# CPU-only build that was supposed to have GPU support.
+# nvcc/toolkit is a hard configure error, so a machine never silently produces
+# a CPU-only build that was supposed to have GPU support.
 
 add_library(toby_cuda INTERFACE)
 add_library(toby::cuda ALIAS toby_cuda)
@@ -41,6 +34,34 @@ if(NOT DEFINED CUDAToolkit_ROOT AND NOT DEFINED ENV{CUDA_PATH} AND EXISTS /usr/l
   set(CUDAToolkit_ROOT /usr/local/cuda)
 endif()
 
+# Keep CUDA's language ceiling local to .cu files. Host-only sources remain
+# C++23. CUDA extensions are unnecessary for ordinary kernel launch syntax.
+set(CMAKE_CUDA_STANDARD 20)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+set(CMAKE_CUDA_EXTENSIONS OFF)
+
+if(NOT CMAKE_CUDA_ARCHITECTURES)
+  message(
+    FATAL_ERROR
+    "toby: CMAKE_CUDA_ARCHITECTURES must be non-empty. Use 'native' for a "
+    "local GPU build or an explicit capability such as 120 for a headless build."
+  )
+endif()
+
+# nvcc's default host compiler (found by probing PATH/cc) is whatever system
+# compiler it ships expecting -- typically g++, never libc++-aware. Every host
+# executable in this tree links with -stdlib=libc++ (see the clang presets), and
+# that flag reaches nvcc's link step too since CMAKE_EXE_LINKER_FLAGS is global
+# and not language-scoped. Point nvcc at the same Clang the rest of the project
+# uses so its host link step understands -stdlib=libc++ instead of erroring out
+# on an unrecognized g++ flag.
+if(NOT DEFINED CMAKE_CUDA_HOST_COMPILER AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  set(CMAKE_CUDA_HOST_COMPILER "${CMAKE_CXX_COMPILER}" CACHE FILEPATH "Host compiler used by nvcc")
+endif()
+
+# This is deliberately guarded by TOBY_ENABLE_CUDA. CPU-only configurations --
+# including every macOS preset -- never probe for nvcc.
+enable_language(CUDA)
 find_package(CUDAToolkit REQUIRED)
 
 # CUDA::cudart is the shared libcudart. CUDA::cudart_static is the alternative and
@@ -62,28 +83,12 @@ target_compile_definitions(toby_cuda INTERFACE TOBY_HAVE_CUDA=1)
 # already exempt from our warnings-as-errors -- no SYSTEM keyword needed the way
 # the FetchContent dependencies need one.
 
-message(STATUS "toby: CUDA runtime ${CUDAToolkit_VERSION} from ${CUDAToolkit_LIBRARY_ROOT}")
+message(
+  STATUS
+  "toby: CUDA ${CUDAToolkit_VERSION}; compiler=${CMAKE_CUDA_COMPILER}; "
+  "architectures=${CMAKE_CUDA_ARCHITECTURES}"
+)
 
-# ---------------------------------------------------------------------------
-# WHEN NVCC IS ACTUALLY NEEDED (writing .cu kernels), the delta is:
-#
-#   1. project(... LANGUAGES CXX CUDA) -- or `enable_language(CUDA)` guarded by
-#      TOBY_ENABLE_CUDA, which keeps CPU-only configures free of the nvcc probe.
-#   2. set(CMAKE_CUDA_STANDARD 20) + CMAKE_CUDA_STANDARD_REQUIRED ON. nvcc 13
-#      does not accept -std=c++23 for device code, so a .cu file cannot be C++23
-#      even though the rest of the tree is. Keep kernels behind a plain C++ header
-#      so this ceiling stays inside the .cu files.
-#   3. set(CMAKE_CUDA_ARCHITECTURES 120) for this box -- an RTX PRO 500 Blackwell
-#      is compute capability 12.0. `native` asks nvcc to detect the local GPU;
-#      a list like "90;120" or "120-real;120-virtual" builds a fat binary that
-#      also runs elsewhere.
-#   4. set(CMAKE_CUDA_HOST_COMPILER ...) -- nvcc drives a *host* compiler for the
-#      non-device half of a .cu file, and it defaults to g++/libstdc++, which
-#      would mix standard libraries with our libc++ objects. Either point it at
-#      clang++-20 (nvcc 13 supports clang as host) or, cleaner, keep .cu files
-#      free of our C++23/libc++ types so the two halves only meet at a plain-C
-#      launcher signature.
-#   5. Sanitizers: ASan/TSan flags do not survive being handed to nvcc. Add
-#      $<$<COMPILE_LANGUAGE:CXX>:...> genex guards in Sanitizers.cmake, or use
-#      the toolkit's own compute-sanitizer for device code.
-# ---------------------------------------------------------------------------
+# Keep the boundary between nvcc-compiled code and the libc++ C++23 host code
+# narrow (plain-C launcher functions and CUDA runtime types), so nvcc has to
+# parse as little heavy C++ template code as possible.

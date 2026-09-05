@@ -20,7 +20,11 @@ add_library(toby_simd INTERFACE)
 add_library(toby::simd ALIAS toby_simd)
 
 if(TOBY_SIMD_ARCH)
-  target_compile_options(toby_simd INTERFACE $<$<CXX_COMPILER_ID:Clang>:-march=${TOBY_SIMD_ARCH}>)
+  target_compile_options(
+    toby_simd
+    INTERFACE
+      $<$<COMPILE_LANG_AND_ID:CXX,Clang>:-march=${TOBY_SIMD_ARCH}>
+  )
   message(STATUS "toby: SIMD codegen -march=${TOBY_SIMD_ARCH}")
 else()
   message(STATUS "toby: SIMD codegen arch tuning disabled")
