@@ -5,9 +5,8 @@
 //
 // Built only when -DTOBY_ENABLE_CUDA=ON. It is a build/driver diagnostic, not a
 // test: it answers "does libcudart load, does the driver answer, does a
-// host->device->host round trip come back with the same bytes" -- the questions
-// worth separating out before any engine code is on the stack. Compute is
-// deliberately absent; there is no kernel here, so it needs no nvcc.
+// host->device->kernel->host round trip produces the expected value" -- the
+// questions worth separating out before any engine code is on the stack.
 
 #include <cstddef>
 #include <cstdio>
@@ -17,6 +16,8 @@
 // actually needs: driver_types.h for cudaError_t/cudaDeviceProp, and
 // cuda_runtime_api.h for the calls. cuda_runtime.h itself stays for its C++
 // overloads -- the templated cudaMalloc<T> is what spares us a reinterpret_cast.
+#include "cuda_probe_kernel.hpp"
+
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
 #include <driver_types.h>
@@ -64,8 +65,8 @@ void print_device(const int index) {
     std::println("  async engines      : {}", prop.asyncEngineCount);
 }
 
-// Host -> device -> host with a different destination buffer, so a no-op copy
-// cannot pass by accident.
+// Host -> device -> kernel -> host with a different destination buffer, so a
+// no-op kernel or copy cannot pass by accident.
 bool round_trip() {
     constexpr std::size_t element_count = 1024;
     constexpr std::size_t byte_count = element_count * sizeof(float);
@@ -83,6 +84,7 @@ bool round_trip() {
     std::vector<float> back(element_count, 0.0F);
     const bool copied =
         ok(cudaMemcpy(device, host.data(), byte_count, cudaMemcpyHostToDevice), "cudaMemcpy H2D") &&
+        ok(cuda_probe_launch_increment(device), "increment kernel launch") &&
         ok(cudaMemcpy(back.data(), device, byte_count, cudaMemcpyDeviceToHost), "cudaMemcpy D2H");
 
     ok(cudaFree(device), "cudaFree");
@@ -90,11 +92,12 @@ bool round_trip() {
     if (!copied) {
         return false;
     }
+    host.front() += 1.0F;
     if (back != host) {
-        std::println(stderr, "round trip: bytes came back different");
+        std::println(stderr, "round trip: kernel result was incorrect");
         return false;
     }
-    std::println("round trip: {} floats ok", element_count);
+    std::println("round trip: {} floats and one kernel launch ok", element_count);
     return true;
 }
 

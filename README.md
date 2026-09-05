@@ -55,11 +55,10 @@ Run `cmake --list-presets` to see them all.
 ### CUDA
 
 GPU support is off by default; `-DTOBY_ENABLE_CUDA=ON` (or the `clang-cuda` /
-`clang-cuda-release` presets) links first-party targets against the CUDA
-runtime, and a missing toolkit is then a configure error rather than a silent
-CPU-only build. Only the runtime API is wired -- `cudaMalloc`, `cudaMemcpy`,
-streams, events. There is no `.cu` compilation and therefore no dependency on
-`nvcc`; `cmake/Cuda.cmake` documents what changes when kernels arrive.
+`clang-cuda-release` presets) enables `.cu` compilation and links first-party
+targets against the CUDA runtime. A missing nvcc or toolkit is a configure
+error rather than a silent CPU-only build. CPU and macOS configurations never
+probe for CUDA.
 
 Requires an NVIDIA driver and the CUDA toolkit (headers + `libcudart`).
 CMake finds it via `nvcc` on `PATH`, then `CUDAToolkit_ROOT`/`CUDA_PATH`, then
@@ -69,9 +68,41 @@ CMake finds it via `nvcc` on `PATH`, then `CUDAToolkit_ROOT`/`CUDA_PATH`, then
 cmake --preset clang-cuda
 cmake --build --preset clang-cuda
 
-# Driver/toolkit sanity check: device properties + a memcpy round trip
+# Compiler/driver/toolkit sanity check: properties + a tiny kernel round trip
 ./build/clang-cuda/bin/cuda_probe
 ```
+
+`CMAKE_CUDA_ARCHITECTURES` defaults to `native`, which is the best choice for a
+local development build that will run on the same GPU. It produces a smaller,
+faster build but requires a visible GPU while configuring. For a headless build
+or a known deployment GPU, pass its compute capability explicitly:
+
+```bash
+cmake --preset clang-cuda -DCMAKE_CUDA_ARCHITECTURES=120
+```
+
+For a binary shipped to several GPU generations, use real machine code for
+each supported architecture and optionally PTX for forward compatibility on
+the newest one, for example
+`-DCMAKE_CUDA_ARCHITECTURES=90-real\;120-real\;120-virtual`. Only list
+architectures supported by the installed toolkit; every extra entry increases
+compile time and binary size. Avoid `all`/`all-major` for routine development.
+
+#### Inspecting generated GPU code
+
+Normal CUDA builds embed device code in object files and executables rather
+than leaving standalone `.ptx` files. To inspect your custom kernels, run the
+toolkit's `cuobjdump` on the executable, library, or object file that contains
+them. PTX is present when `CMAKE_CUDA_ARCHITECTURES` includes virtual code; an
+unsuffixed architecture such as `120` requests both real and virtual code.
+
+```bash
+cuobjdump --dump-ptx path/to/your/kernel_target
+```
+
+PTX is NVIDIA's virtual instruction set, not the final instructions executed by
+an SM. To inspect the final SASS machine code instead, use
+`cuobjdump --dump-sass path/to/your/kernel_target`.
 
 ### clang-tidy on macOS
 

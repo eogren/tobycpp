@@ -35,4 +35,24 @@ if(TOBY_WARNINGS_AS_ERRORS)
   list(APPEND _toby_warnings -Werror)
 endif()
 
-target_compile_options(toby_warnings INTERFACE ${_toby_warnings})
+target_compile_options(toby_warnings INTERFACE "$<$<COMPILE_LANGUAGE:CXX>:${_toby_warnings}>")
+
+# nvcc needs host warnings passed through explicitly. Keep this set smaller
+# than the C++ set: several otherwise useful Clang warnings do not exist in the
+# GCC versions nvcc commonly selects as its host compiler.
+set(
+  _toby_cuda_host_warnings
+  -Wall
+  -Wextra
+  -Wpedantic
+)
+if(TOBY_WARNINGS_AS_ERRORS)
+  list(APPEND _toby_cuda_host_warnings -Werror)
+endif()
+
+list(JOIN _toby_cuda_host_warnings "," _toby_cuda_host_warning_arg)
+target_compile_options(
+  toby_warnings
+  INTERFACE
+    $<$<COMPILE_LANG_AND_ID:CUDA,NVIDIA>:-Xcompiler=${_toby_cuda_host_warning_arg}>
+)

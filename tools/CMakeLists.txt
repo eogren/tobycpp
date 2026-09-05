@@ -50,10 +50,26 @@ target_link_libraries(
 toby_enable_tidy(bpe_dump)
 
 # cuda_probe answers "is the GPU side of this machine actually usable" before any
-# engine code depends on it. Only built with -DTOBY_ENABLE_CUDA=ON, since without
-# it toby::cuda is a stub with no runtime behind it.
+# engine code depends on it. Its .cu translation unit also proves that nvcc,
+# device compilation, kernel launch, and the selected architecture all work.
+# Only built with -DTOBY_ENABLE_CUDA=ON.
 if(TOBY_ENABLE_CUDA)
-  add_executable(cuda_probe cuda_probe.cpp)
+  add_executable(
+    cuda_probe
+    cuda_probe.cpp
+    cuda_probe_kernel.cu
+  )
+
+  # The host executable is linked by the project's C++ compiler (and libc++),
+  # while nvcc only compiles the ABI-neutral .cu translation unit.
+  set_target_properties(
+    cuda_probe
+    PROPERTIES
+      LINKER_LANGUAGE
+        CXX
+      CUDA_SEPARABLE_COMPILATION
+        OFF
+  )
 
   target_link_libraries(
     cuda_probe

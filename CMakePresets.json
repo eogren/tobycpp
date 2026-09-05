@@ -26,14 +26,14 @@
     },
     {
       "name": "clang-cuda",
-      "displayName": "Clang 20 + libc++ Debug + CUDA runtime",
-      "description": "Adds libcudart to the Debug build. Needs the CUDA toolkit; pass -DCUDAToolkit_ROOT=... if it is not in /usr/local/cuda.",
+      "displayName": "Clang 20 + libc++ Debug + CUDA",
+      "description": "Builds CUDA kernels for the local GPU. Needs nvcc and the CUDA toolkit; override CMAKE_CUDA_ARCHITECTURES for headless or portable builds.",
       "inherits": "clang-debug",
       "cacheVariables": { "TOBY_ENABLE_CUDA": "ON" }
     },
     {
       "name": "clang-cuda-release",
-      "displayName": "Clang 20 + libc++ RelWithDebInfo + CUDA runtime",
+      "displayName": "Clang 20 + libc++ RelWithDebInfo + CUDA",
       "inherits": "clang-release",
       "cacheVariables": { "TOBY_ENABLE_CUDA": "ON" }
     },
