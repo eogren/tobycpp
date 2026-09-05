@@ -5,7 +5,6 @@
 
 #include <cstddef>
 #include <cstdlib>
-#include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
 #include <driver_types.h>
 #include <vector>
@@ -30,8 +29,9 @@ CudaAlloc::~CudaAlloc() {
 
 void GpuArena::bulk_memcpy(const std::vector<MemcpyInfo>& copies) {
     for (auto const& memcpy : copies) {
-        // NOLINTNEXTLINE
-        auto new_dst = static_cast<std::byte*>(mapping_.addr()) + memcpy.new_offset;
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        auto* new_dst = static_cast<std::byte*>(mapping_.addr()) + memcpy.new_offset;
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         const auto* new_src = static_cast<const std::byte*>(memcpy.src) + memcpy.src_offset;
 
         auto err = cudaMemcpy(new_dst, new_src, memcpy.size, ::cudaMemcpyDefault);

@@ -7,6 +7,7 @@
 #if TOBY_HAVE_CUDA
 #include <catch2/generators/catch_generators.hpp>
 #include <cuda_runtime_api.h>
+#include <driver_types.h>
 #endif
 #include <cstdint>
 #include <cstring>
@@ -74,8 +75,13 @@ std::vector<T> values(const Tensor& tensor, const DeviceType device_type = Devic
         return result;
     }
 #endif
-    std::memcpy(result.data(), tensor.data(), tensor.size_bytes());
-    return result;
+
+    if (device_type == DeviceType::CPU) {
+        std::memcpy(result.data(), tensor.data(), tensor.size_bytes());
+        return result;
+    }
+
+    throw std::runtime_error{"Fell through to unknown device type"};
 }
 } // namespace
 
@@ -141,8 +147,8 @@ TEST_CASE("safetensors permits an empty filtered result", "[safetensors]") {
     constexpr auto device_type = DeviceType::CPU;
 #endif
 
-    auto [arena, tensors] = load_safetensors(good_safetensor(), device_type,
-                                             [](std::string_view) { return false; });
+    auto [arena, tensors] =
+        load_safetensors(good_safetensor(), device_type, [](std::string_view) { return false; });
 
     REQUIRE(arena != nullptr);
     CHECK(arena->byte_span().empty());
