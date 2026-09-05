@@ -6,7 +6,14 @@
 #include <cstddef>
 #include <memory>
 #include <span>
+
+#if !TOBY_HAVE_CUDA
 #include <stdexcept>
+#endif
+
+#if TOBY_HAVE_CUDA
+#include "gpu_arena.hpp"
+#endif
 
 using toby::tensors::DeviceType;
 
@@ -18,7 +25,11 @@ std::unique_ptr<Arena> Arena::alloc_anonymous(std::size_t size, DeviceType devic
     case DeviceType::CPU:
         return std::make_unique<detail::CpuArena>(size);
     case DeviceType::GPU:
-        throw std::invalid_argument{"no gpus yet"};
+#if TOBY_HAVE_CUDA
+        return std::make_unique<detail::GpuArena>(size);
+#else
+        throw std::invalid_argument{"no gpus in this build"};
+#endif
     }
 }
 
