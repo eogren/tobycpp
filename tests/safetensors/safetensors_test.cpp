@@ -4,6 +4,10 @@
 
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
+#if TOBY_HAVE_CUDA
+#include <catch2/generators/catch_generators.hpp>
+#include <cuda_runtime_api.h>
+#endif
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
@@ -57,16 +61,33 @@ using toby::tensors::Tensor;
 using toby::test::TempFile;
 
 namespace {
-template <typename T> std::vector<T> values(const Tensor& tensor) {
+template <typename T>
+std::vector<T> values(const Tensor& tensor, const DeviceType device_type = DeviceType::CPU) {
     std::vector<T> result(tensor.size_bytes() / sizeof(T));
+#if TOBY_HAVE_CUDA
+    if (device_type == DeviceType::GPU) {
+        const auto status =
+            cudaMemcpy(result.data(), tensor.data(), tensor.size_bytes(), cudaMemcpyDeviceToHost);
+        if (status != cudaSuccess) {
+            throw std::runtime_error{cudaGetErrorString(status)};
+        }
+        return result;
+    }
+#endif
     std::memcpy(result.data(), tensor.data(), tensor.size_bytes());
     return result;
 }
 } // namespace
 
 TEST_CASE("safetensors loads tensor metadata and payload values", "[safetensors]") {
+#if TOBY_HAVE_CUDA
+    const auto device_type = GENERATE(DeviceType::CPU, DeviceType::GPU);
+#else
+    constexpr auto device_type = DeviceType::CPU;
+#endif
+
     auto [arena, tensors] =
-        load_safetensors(good_safetensor(), DeviceType::CPU, [](std::string_view) { return true; });
+        load_safetensors(good_safetensor(), device_type, [](std::string_view) { return true; });
 
     REQUIRE(arena != nullptr);
     REQUIRE(tensors.size() == 3);
@@ -75,14 +96,15 @@ TEST_CASE("safetensors loads tensor metadata and payload values", "[safetensors]
     REQUIRE(scalar != tensors.end());
     CHECK(scalar->dtype() == DataType::F32);
     CHECK(scalar->shape().ndim() == 0);
-    CHECK(values<float>(*scalar) == std::vector{1.5F});
+    CHECK(values<float>(*scalar, device_type) == std::vector{1.5F});
 
     const auto token_ids = std::ranges::find(tensors, "token_ids", &Tensor::name);
     REQUIRE(token_ids != tensors.end());
     CHECK(token_ids->dtype() == DataType::U16);
     REQUIRE(token_ids->shape().ndim() == 1);
     CHECK(token_ids->shape()[0] == 4);
-    CHECK(values<std::uint16_t>(*token_ids) == std::vector<std::uint16_t>{50256, 20, 30, 40});
+    CHECK(values<std::uint16_t>(*token_ids, device_type) ==
+          std::vector<std::uint16_t>{50256, 20, 30, 40});
 
     const auto projection = std::ranges::find(tensors, "projection", &Tensor::name);
     REQUIRE(projection != tensors.end());
@@ -90,22 +112,36 @@ TEST_CASE("safetensors loads tensor metadata and payload values", "[safetensors]
     REQUIRE(projection->shape().ndim() == 2);
     CHECK(projection->shape()[0] == 2);
     CHECK(projection->shape()[1] == 3);
-    CHECK(values<float>(*projection) == std::vector{-1.0F, -0.5F, 0.0F, 0.5F, 1.0F, 1.5F});
+    CHECK(values<float>(*projection, device_type) ==
+          std::vector{-1.0F, -0.5F, 0.0F, 0.5F, 1.0F, 1.5F});
 }
 
 TEST_CASE("safetensors loads selected tensor values", "[safetensors]") {
+#if TOBY_HAVE_CUDA
+    const auto device_type = GENERATE(DeviceType::CPU, DeviceType::GPU);
+#else
+    constexpr auto device_type = DeviceType::CPU;
+#endif
+
     auto [arena, tensors] =
-        load_safetensors(good_safetensor(), DeviceType::CPU,
+        load_safetensors(good_safetensor(), device_type,
                          [](const std::string_view name) { return name == "token_ids"; });
 
     REQUIRE(arena != nullptr);
     REQUIRE(tensors.size() == 1);
     CHECK(tensors.front().name() == "token_ids");
-    CHECK(values<std::uint16_t>(tensors.front()) == std::vector<std::uint16_t>{50256, 20, 30, 40});
+    CHECK(values<std::uint16_t>(tensors.front(), device_type) ==
+          std::vector<std::uint16_t>{50256, 20, 30, 40});
 }
 
 TEST_CASE("safetensors permits an empty filtered result", "[safetensors]") {
-    auto [arena, tensors] = load_safetensors(good_safetensor(), DeviceType::CPU,
+#if TOBY_HAVE_CUDA
+    const auto device_type = GENERATE(DeviceType::CPU, DeviceType::GPU);
+#else
+    constexpr auto device_type = DeviceType::CPU;
+#endif
+
+    auto [arena, tensors] = load_safetensors(good_safetensor(), device_type,
                                              [](std::string_view) { return false; });
 
     REQUIRE(arena != nullptr);
@@ -114,7 +150,13 @@ TEST_CASE("safetensors permits an empty filtered result", "[safetensors]") {
 }
 
 TEST_CASE("safetensors loads a zero-element tensor", "[safetensors]") {
-    auto [arena, tensors] = load_safetensors(empty_tensor_safetensor(), DeviceType::CPU,
+#if TOBY_HAVE_CUDA
+    const auto device_type = GENERATE(DeviceType::CPU, DeviceType::GPU);
+#else
+    constexpr auto device_type = DeviceType::CPU;
+#endif
+
+    auto [arena, tensors] = load_safetensors(empty_tensor_safetensor(), device_type,
                                              [](std::string_view) { return true; });
 
     REQUIRE(arena != nullptr);

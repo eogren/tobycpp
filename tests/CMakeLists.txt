@@ -65,6 +65,7 @@ target_link_libraries(
     toby_test_dependency_warnings
     toby::sanitizers
     toby::simd
+    toby::cuda
 )
 
 # Fixture files are read at run time, and CTest runs tests from the build tree,
