@@ -28,6 +28,7 @@ add_executable(
 add_executable(
   toby_safetensors_tests
   safetensors/align_test.cpp
+  safetensors/arena_test.cpp
   safetensors/file_test.cpp
   safetensors/safetensors_test.cpp
   safetensors/tensor_test.cpp

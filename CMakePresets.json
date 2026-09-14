@@ -32,6 +32,13 @@
       "cacheVariables": { "TOBY_ENABLE_CUDA": "ON" }
     },
     {
+      "name": "clang-cuda-tidy",
+      "displayName": "Clang 20 + libc++ Debug + CUDA + clang-tidy",
+      "description": "CUDA development build with clang-tidy checks on first-party C++ sources during compilation.",
+      "inherits": "clang-cuda",
+      "cacheVariables": { "TOBY_ENABLE_CLANG_TIDY": "ON" }
+    },
+    {
       "name": "clang-cuda-release",
       "displayName": "Clang 20 + libc++ RelWithDebInfo + CUDA",
       "inherits": "clang-release",
@@ -156,6 +163,7 @@
     { "name": "clang-asan",    "configurePreset": "clang-asan" },
     { "name": "clang-tsan",    "configurePreset": "clang-tsan" },
     { "name": "clang-cuda",    "configurePreset": "clang-cuda" },
+    { "name": "clang-cuda-tidy", "configurePreset": "clang-cuda-tidy" },
     { "name": "clang-cuda-release", "configurePreset": "clang-cuda-release" },
     { "name": "macos-debug",   "configurePreset": "macos-debug" },
     { "name": "macos-release", "configurePreset": "macos-release" },
@@ -174,6 +182,7 @@
     { "name": "clang-asan",  "configurePreset": "clang-asan",  "inherits": "base" },
     { "name": "clang-tsan",  "configurePreset": "clang-tsan",  "inherits": "base" },
     { "name": "clang-cuda",  "configurePreset": "clang-cuda",  "inherits": "base" },
+    { "name": "clang-cuda-tidy", "configurePreset": "clang-cuda-tidy", "inherits": "base" },
     { "name": "macos-debug", "configurePreset": "macos-debug", "inherits": "base" },
     { "name": "macos-asan",  "configurePreset": "macos-asan",  "inherits": "base" },
     { "name": "macos-tsan",  "configurePreset": "macos-tsan",  "inherits": "base" }

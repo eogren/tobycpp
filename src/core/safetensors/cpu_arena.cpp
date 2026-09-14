@@ -1,14 +1,11 @@
 #include "cpu_arena.hpp"
 
-#include "toby/safetensors/arena.hpp"
 #include "toby/safetensors/file.hpp"
 
 #include <cerrno>
 #include <cstddef>
-#include <cstring>
 #include <sys/mman.h>
 #include <system_error>
-#include <vector>
 
 namespace {
 constexpr int file_mode_to_mode(toby::tensors::FileMode mode) {
@@ -28,7 +25,7 @@ ScopedMapping ScopedMapping::from_fd(int fd, FileMode mode) {
     return ScopedMapping{fd, file_mode_to_mode(mode), file_length(fd)};
 };
 
-ScopedMapping::ScopedMapping(int fd, int prot, std::size_t len) : len_(len) {
+ScopedMapping::ScopedMapping(int fd, int prot, std::size_t len) : size_(len) {
     if (len == 0) {
         return;
     }
@@ -36,6 +33,9 @@ ScopedMapping::ScopedMapping(int fd, int prot, std::size_t len) : len_(len) {
     int flags = MAP_PRIVATE;
     if (fd == -1) {
         flags |= MAP_ANONYMOUS;
+        used_ = 0;
+    } else {
+        used_ = len;
     }
 
     void* data = mmap(nullptr, len, prot, flags, fd, 0);
@@ -48,19 +48,8 @@ ScopedMapping::ScopedMapping(int fd, int prot, std::size_t len) : len_(len) {
 
 ScopedMapping::~ScopedMapping() {
     if (addr_ != nullptr) {
-        munmap(addr_, len_);
+        munmap(addr_, size_);
     }
 }
 
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-void CpuArena::bulk_memcpy(const std::vector<MemcpyInfo>& copies) {
-    for (const auto& copy : copies) {
-        auto* dest = static_cast<std::byte*>(base()) + copy.new_offset;
-        const auto* src = static_cast<const std::byte*>(copy.src) + copy.src_offset;
-
-        std::memcpy(dest, src, copy.size);
-    }
-}
-
-// NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 } // namespace toby::tensors::detail

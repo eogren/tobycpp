@@ -1,6 +1,7 @@
 #include "support/temp_file.hpp"
 #include "toby/safetensors/safetensors.hpp"
 #include "toby/safetensors/tensor.hpp"
+#include "toby/safetensors/tensor_types.hpp"
 
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>

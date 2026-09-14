@@ -6,10 +6,11 @@ add_library(
   toby_safetensors
   arena.cpp
   cpu_arena.cpp
+  memory_transfer.cpp
   file.cpp
   safetensors.cpp
 )
-if (TOBY_ENABLE_CUDA)
+if(TOBY_ENABLE_CUDA)
   target_sources(toby_safetensors PRIVATE gpu_arena.cpp)
   target_link_libraries(toby_safetensors PRIVATE toby::cuda)
 endif()
@@ -36,10 +37,11 @@ target_link_libraries(
   toby_safetensors
   PRIVATE
     nlohmann_json::nlohmann_json
-    spdlog::spdlog
     toby::warnings
     toby::sanitizers
     toby::simd
 )
+
+target_link_libraries(toby_safetensors PUBLIC spdlog::spdlog)
 
 toby_enable_tidy(toby_safetensors)
