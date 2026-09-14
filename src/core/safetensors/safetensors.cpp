@@ -1,6 +1,7 @@
 #include "toby/safetensors/safetensors.hpp"
 
 #include "cpu_arena.hpp"
+#include "memory_transfer.hpp"
 #include "toby/safetensors/align.hpp"
 #include "toby/safetensors/arena.hpp"
 #include "toby/safetensors/file.hpp"
@@ -59,6 +60,37 @@ constexpr std::size_t element_size(toby::tensors::DataType data_type) {
         return 2;
     }
 }
+
+static_assert(element_size(toby::tensors::DataType::F32) == 4);
+static_assert(element_size(toby::tensors::DataType::U16) == 2);
+
+constexpr std::size_t index_for_cell(const toby::tensors::TensorShape& shape,
+                                     const std::initializer_list<std::size_t>& range) {
+    auto dims = shape.dimensions();
+    if (dims.size() != range.size()) {
+        throw std::invalid_argument{std::format(
+            "Expected coordinates to have {} dimensions, but had {}", dims.size(), range.size())};
+    }
+
+    std::size_t multiplier = 1;
+    std::size_t ret = 0;
+    for (auto [coord, dim_size] :
+         std::views::zip(std::views::reverse(range), std::views::reverse(dims))) {
+
+        if (coord >= dim_size) {
+            throw std::invalid_argument{
+                std::format("Index {} greater than corresponding dim size {}", coord, dim_size)};
+        }
+
+        ret += multiplier * coord;
+        multiplier *= dim_size;
+    }
+
+    return ret;
+}
+
+static_assert(index_for_cell(toby::tensors::TensorShape{4, 5}, {0, 3}) == 3);
+static_assert(index_for_cell(toby::tensors::TensorShape{4, 5}, {3, 3}) == 18);
 
 constexpr toby::tensors::TensorShape parse_shape(const auto& shape) {
     if (!shape.is_array() || shape.size() > 4) {
@@ -126,18 +158,17 @@ std::uint16_t Tensor::at_u16(std::initializer_list<std::size_t> indices) const {
     if (indices.size() != shape_.ndim()) {
         throw std::invalid_argument{"at_u16: must pass correct number of arguments to shape"};
     }
-
-    std::size_t target_idx = 0;
-
-    for (auto [index, dim] : std::views::zip(indices, shape_.dimensions())) {
-        if (index >= dim) {
-            throw std::invalid_argument{
-                std::format("Index {} greater than corresponding dim size {}", index, dim)};
-        }
+    if (dtype_ != DataType::U16) {
+        throw std::runtime_error{"DType not convertible to U16"};
     }
 
-    // index calculatoins ... if i had shape(4, 5) - then index is (first_dim * 5 + second_dim)
-    std::uint16_t ret;
+    auto idx = index_for_cell(shape(), indices);
+    std::uint16_t ret{};
+    auto ret_bytes = std::as_writable_bytes(std::span{&ret, 1});
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    const std::byte* src_ptr = static_cast<const std::byte*>(data_) + (sizeof(ret) * idx);
+    detail::copy_bytes(ret_bytes, DeviceType::CPU, std::span{src_ptr, sizeof(ret)}, device_);
+    return ret;
 }
 } // namespace toby::tensors
 

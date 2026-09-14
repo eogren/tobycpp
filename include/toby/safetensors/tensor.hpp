@@ -48,7 +48,7 @@ public:
     }
 
     /** Iterate through dimensions of the shape. Must not outlive the shape itself. */
-    [[nodiscard]] auto dimensions() const {
+    [[nodiscard]] constexpr auto dimensions() const {
         return std::views::iota(std::size_t{0}, ndim()) |
                std::views::transform([this](std::size_t axis) { return (*this)[axis]; });
     }
