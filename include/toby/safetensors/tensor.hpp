@@ -1,13 +1,18 @@
 #ifndef SAFETENSORS_TENSOR_HPP
 #define SAFETENSORS_TENSOR_HPP
 
+#include "toby/safetensors/arena.hpp"
+#include "toby/safetensors/tensor_types.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <format>
+#include <initializer_list>
 #include <limits>
+#include <optional>
 #include <ranges>
 #include <span>
 #include <stdexcept>
@@ -15,9 +20,6 @@
 #include <string_view>
 
 namespace toby::tensors {
-enum class DeviceType : std::uint8_t { CPU, GPU };
-enum class DataType : std::uint8_t { F32, U16 };
-
 constexpr size_t bytes_per_elem(const DataType type) {
     switch (type) {
     case toby::tensors::DataType::F32:
@@ -29,18 +31,26 @@ constexpr size_t bytes_per_elem(const DataType type) {
 
 class TensorShape {
 public:
-    constexpr TensorShape(std::span<uint32_t> dims) : dims_{-1, -1, -1, -1} {
+    constexpr TensorShape(std::initializer_list<std::size_t> dims) : TensorShape(std::span{dims}) {}
+
+    constexpr TensorShape(std::span<const size_t> dims) : dims_{-1, -1, -1, -1} {
         if (dims.size() > 4) {
             throw std::invalid_argument{"only up to 4 dims supported"};
         }
 
-        std::ranges::transform(dims, dims_.begin(), [](const uint32_t n) {
-            if (n > std::numeric_limits<std::int32_t>::max()) {
-                throw std::invalid_argument{std::format("dim {} too big", n)};
+        std::size_t working_numel = 1;
+        for (auto dim : dims) {
+            if (__builtin_mul_overflow(working_numel, dim, &working_numel)) {
+                throw std::overflow_error{"tensor too big; numel would overflow"};
             }
+        }
+        std::ranges::copy(dims, dims_.begin());
+    }
 
-            return static_cast<std::int32_t>(n);
-        });
+    /** Iterate through dimensions of the shape. Must not outlive the shape itself. */
+    [[nodiscard]] constexpr auto dimensions() const {
+        return std::views::iota(std::size_t{0}, ndim()) |
+               std::views::transform([this](std::size_t axis) { return (*this)[axis]; });
     }
 
     [[nodiscard]] constexpr std::size_t ndim() const {
@@ -53,7 +63,7 @@ public:
         std::size_t ret = 1;
 
         for (std::size_t i = 0; i < dims; i++) {
-            const auto d = static_cast<std::size_t>(operator[](i));
+            const auto d = operator[](i);
             if (d != 0 && ret > std::numeric_limits<std::size_t>::max() / d) {
                 throw std::overflow_error{"TensorShape::numel overflowed size_t"};
             }
@@ -63,10 +73,18 @@ public:
         return ret;
     }
 
-    constexpr std::uint32_t operator[](std::size_t idx) const {
+    constexpr std::size_t operator[](std::size_t idx) const {
         auto val = dims_.at(idx);
         assert(val >= 0);
-        return static_cast<std::uint32_t>(val);
+        return static_cast<std::size_t>(val);
+    }
+
+    constexpr bool operator==(const TensorShape& others) const {
+        if (this == &others) {
+            return true;
+        }
+
+        return dims_ == others.dims_;
     }
 
 private:
@@ -74,7 +92,7 @@ private:
 };
 
 // Element count times bytes-per-element, checked for size_t overflow. Shared
-// by Tensor::size_bytes() and Tensor::from_ptr() so there's one place that
+// by Tensor::size_bytes() and Tensor::from_cpu_ptr() so there's one place that
 // knows how to compute a tensor's byte size safely.
 inline std::size_t checked_size_bytes(const TensorShape& shape, DataType dtype) {
     const auto count = shape.numel();
@@ -89,6 +107,8 @@ class Tensor {
 public:
     [[nodiscard]] std::string_view name() const { return name_; }
 
+    [[nodiscard]] DeviceType device() const { return device_; }
+
     [[nodiscard]] DataType dtype() const { return dtype_; }
 
     [[nodiscard]] const void* data() const { return data_; }
@@ -97,33 +117,50 @@ public:
 
     [[nodiscard]] std::size_t size_bytes() const { return checked_size_bytes(shape_, dtype_); }
 
-    static Tensor from_ptr(std::string_view name, DataType dtype, std::span<const std::byte> base,
-                           TensorShape shape) {
+    /**
+        Retrieve the given value from this tensor as a u16. May involve a blocking memcpy from
+        GPU to CPU if this is a GPU tensor.
+
+        If the dtype is not U16 or someting that can upconvert to it (U4, U8, etc), this will throw.
+        If the indices are out of bound or wrong shape, std::invalid_argument will be thrown.
+    */
+    [[nodiscard]] std::uint16_t at_u16(std::initializer_list<std::size_t> indices) const;
+
+    static Tensor from_ptr(std::string_view name, DeviceType device, DataType dtype,
+                           std::span<const std::byte> base, TensorShape shape) {
         const auto expected_bytes = checked_size_bytes(shape, dtype);
         if (expected_bytes != base.size_bytes()) {
             throw std::invalid_argument{
                 std::format("Expected tensor to be exactly {} bytes, got {}", expected_bytes,
                             base.size_bytes())};
         }
-        return Tensor{name, dtype, base, shape};
+        return Tensor{name, device, dtype, base, shape};
+    }
+
+    // Borrows CPU memory; the backing storage must outlive this tensor and its copies.
+    static Tensor from_cpu_ptr(std::string_view name, DataType dtype,
+                               std::span<const std::byte> base, TensorShape shape) {
+        return from_ptr(name, DeviceType::CPU, dtype, base, shape);
     }
 
 private:
-    Tensor(std::string_view name, DataType dtype, std::span<const std::byte> base,
-           TensorShape shape)
-        : data_(base.data()), dtype_(dtype), shape_(shape), name_(name) {}
+    Tensor(std::string_view name, DeviceType device, DataType dtype,
+           std::span<const std::byte> base, TensorShape shape)
+        : data_(base.data()), device_(device), dtype_(dtype), shape_(shape), name_(name) {}
 
     const void* data_;
+    DeviceType device_;
     DataType dtype_;
     TensorShape shape_;
     std::string name_;
 };
 
-template <typename T> class TypedTensor {
-private:
-    T* data_; // points inside an arena somewhere
-    std::array<uint32_t, 4> shape_;
-};
+/**
+ * Take a list of scalars and convert them to a rank-1 vector. They will be stored
+ * in the given Arena (which implicitly picks device type as well)
+ */
+Tensor u16_from_scalars(Arena& arena, std::initializer_list<const std::uint16_t> indices,
+                        std::optional<std::string_view> name = {});
 } // namespace toby::tensors
 
 template <> struct std::formatter<toby::tensors::TensorShape> : std::formatter<std::string> {

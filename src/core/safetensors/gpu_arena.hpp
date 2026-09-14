@@ -2,8 +2,12 @@
 #define SAFETENSORS_GPU_ARENA_HPP
 
 #include "toby/safetensors/arena.hpp"
+#include "toby/safetensors/tensor_types.hpp"
 
 #include <cstddef>
+#include <optional>
+#include <span>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -34,13 +38,13 @@ private:
 
 class GpuArena : public toby::tensors::Arena {
 public:
-    explicit GpuArena(std::size_t len) : GpuArena(CudaAlloc::anonymous(len)) {}
+    explicit GpuArena(std::optional<std::string_view> name, std::size_t len)
+        : GpuArena(name, CudaAlloc::anonymous(len)) {}
 
-    explicit GpuArena(CudaAlloc&& mapping)
-        : toby::tensors::Arena("gpu_arena", mapping.addr(), mapping.size()),
+    explicit GpuArena(std::optional<std::string_view> name, CudaAlloc&& mapping)
+        : toby::tensors::Arena(name.value_or("gpu_arena"), DeviceType::GPU, mapping.addr(),
+                               mapping.size()),
           mapping_(std::move(mapping)) {}
-
-    void bulk_memcpy(const std::vector<MemcpyInfo>& copies) override;
 
 private:
     CudaAlloc mapping_;

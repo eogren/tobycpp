@@ -4,6 +4,7 @@
 #include "toby/safetensors/arena.hpp"
 #include "toby/safetensors/file.hpp"
 #include "toby/safetensors/tensor.hpp"
+#include "toby/safetensors/tensor_types.hpp"
 
 #include <concepts>
 #include <cstddef>
