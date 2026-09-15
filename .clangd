@@ -8,3 +8,18 @@
 Diagnostics:
   MissingIncludes: Strict
   UnusedIncludes: Strict
+
+# clangd uses Clang's CUDA parser, which does not accept these nvcc options.
+# Apply this to sources and headers that inherit a CUDA compile command.
+CompileFlags:
+  Remove: [-forward-unknown-to-host-compiler, '-ccbin=*', '-arch=*']
+
+---
+# Public C++ headers may borrow an nvcc command from a CUDA includer.
+# Parse them as ordinary C++ with the project's host standard library.
+If:
+  PathMatch: include/.*\.hpp
+CompileFlags:
+  Compiler: clang++
+  Remove: [-x, '-std=*', '-stdlib=*']
+  Add: [-xc++, -std=c++23, -stdlib=libc++]
