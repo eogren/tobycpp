@@ -12,7 +12,17 @@ Diagnostics:
 # clangd uses Clang's CUDA parser, which does not accept these nvcc options.
 # Apply this to sources and headers that inherit a CUDA compile command.
 CompileFlags:
-  Remove: [-forward-unknown-to-host-compiler, '-ccbin=*', '-arch=*']
+  Remove: [-forward-unknown-to-host-compiler, '-ccbin=*', '-arch=*', -G, '-Xcompiler=*']
+
+---
+# nvcc's driver name prevents clangd from applying the CUDA target's C++20
+# mode. Parse CUDA sources with Clang 20 and the same language standard.
+If:
+  PathMatch: .*\.cu
+CompileFlags:
+  Compiler: clang++-20
+  Remove: ['-std=*']
+  Add: [-std=c++20]
 
 ---
 # Public C++ headers may borrow an nvcc command from a CUDA includer.
