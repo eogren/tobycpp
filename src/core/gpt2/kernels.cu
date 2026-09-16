@@ -1,6 +1,5 @@
 #include "toby/cuda_utils/cuda_alloc.hpp"
 #include "toby/cuda_utils/cuda_exception.hpp"
-#include "toby/gpt2/kernels.h"
 #include "toby/safetensors/memory_transfer.hpp"
 #include "toby/safetensors/tensor.hpp"
 #include "toby/safetensors/tensor_types.hpp"
@@ -8,7 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cuda_runtime_api.h>
-#include <format>
+#include <device_atomic_functions.h>
 #include <span>
 #include <stdexcept>
 
@@ -24,16 +23,34 @@ namespace {
  */
 template <typename T>
 __global__ void tensors_equal_tmpl(int* out, const T* t1, const T* t2, std::size_t size) {
-    // do the dumbest possible thing for now. each thread = 1 cell of the array, and always
-    // write results out if false
+    __shared__ bool is_equal[8]; // NOLINT(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+
+    // todo: Early exit somewhere?
+
+    // warp-level: collect whether equality is false and use ballot_sync to coordinate
+    // among all warp threads
+
     size_t idx = (blockDim.x * blockIdx.x) + threadIdx.x;
-    bool is_equal =
+    bool local_is_equal =
         (idx >= size)
             ? true
             : (t1[idx] == t2[idx]); // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    unsigned int equality_mask = __ballot_sync(0xFFFFFFFF, local_is_equal);
 
-    if (!is_equal) {
-        *out = 0;
+    if (threadIdx.x % 32 == 0) {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
+        is_equal[threadIdx.x / 32] =
+            (equality_mask ==
+             0xFFFFFFFF);
+    }
+
+    __syncthreads();
+
+    // block level: write out if failed
+
+    if (threadIdx.x == 0 && (!is_equal[0] || !is_equal[1] || !is_equal[2] || !is_equal[3] ||
+                             !is_equal[4] || !is_equal[5] || !is_equal[6] || !is_equal[7])) {
+        atomicExch(out, 0);
     }
 }
 } // namespace
