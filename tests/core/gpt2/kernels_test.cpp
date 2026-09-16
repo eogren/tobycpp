@@ -1,4 +1,4 @@
-#include "gpt2/kernels.h"
+#include "toby/gpt2/kernels.h"
 #include "toby/safetensors/arena.hpp"
 #include "toby/safetensors/tensor.hpp"
 #include "toby/safetensors/tensor_types.hpp"
