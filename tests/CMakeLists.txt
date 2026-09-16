@@ -109,6 +109,35 @@ catch_discover_tests(toby_tests
 )
 catch_discover_tests(toby_safetensors_tests)
 
+# GPT-2 kernels are compiled from CUDA sources and need the CUDA runtime.
+if(TOBY_ENABLE_CUDA)
+  add_executable(toby_gpt2_tests core/gpt2/kernels_test.cpp)
+  target_link_libraries(
+    toby_gpt2_tests
+    PRIVATE
+      toby::gpt2_kernels
+      Catch2::Catch2WithMain
+      toby::warnings
+      toby_test_dependency_warnings
+      toby::sanitizers
+      toby::simd
+      toby::cuda
+  )
+  target_include_directories(
+    toby_gpt2_tests
+    PRIVATE
+      ${CMAKE_SOURCE_DIR}/src/core
+      ${CMAKE_CURRENT_SOURCE_DIR}
+  )
+  target_compile_definitions(
+    toby_gpt2_tests
+    PRIVATE
+      TOBY_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
+  )
+  toby_enable_tidy(toby_gpt2_tests)
+  catch_discover_tests(toby_gpt2_tests)
+endif()
+
 # ---------------------------------------------------------------------------
 # Differential test: the real pre-tokenizer vs. the GPT-2 regex.
 #

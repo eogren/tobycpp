@@ -9,7 +9,11 @@
 # The single source file below is a placeholder that only proves the toolchain
 # works end to end (build -> link -> test). Replace it as you build the engine.
 # =============================================================================
+if(TOBY_ENABLE_CUDA)
+  add_subdirectory(cuda_utils)
+endif()
 
+add_subdirectory(gpt2)
 add_subdirectory(safetensors)
 
 add_library(toby_core version.cpp)

@@ -11,8 +11,12 @@ add_library(
   safetensors.cpp
 )
 if(TOBY_ENABLE_CUDA)
-  target_sources(toby_safetensors PRIVATE gpu_arena.cpp)
-  target_link_libraries(toby_safetensors PRIVATE toby::cuda)
+  target_link_libraries(
+    toby_safetensors
+    PRIVATE
+      toby::cuda
+      toby::cuda_utils
+  )
 endif()
 
 add_library(toby::safetensors ALIAS toby_safetensors)

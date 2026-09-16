@@ -1,5 +1,5 @@
-#include "safetensors/memory_transfer.hpp"
 #include "toby/safetensors/arena.hpp"
+#include "toby/safetensors/memory_transfer.hpp"
 #include "toby/safetensors/tensor_types.hpp"
 
 #include <array>
@@ -44,7 +44,7 @@ bool is_subspan(std::span<T1, ExtentA> spanA, std::span<T2, ExtentB> spanB) {
 
 std::vector<std::byte> to_cpu(std::span<const std::byte> data, DeviceType data_device) {
     std::vector<std::byte> ret(data.size_bytes());
-    toby::tensors::detail::copy_bytes(ret, DeviceType::CPU, data, data_device);
+    toby::tensors::copy_bytes(ret, DeviceType::CPU, data, data_device);
     return ret;
 }
 } // namespace

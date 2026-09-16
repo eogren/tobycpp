@@ -1,8 +1,8 @@
 #include "toby/safetensors/arena.hpp"
 
 #include "cpu_arena.hpp"
-#include "memory_transfer.hpp"
 #include "toby/safetensors/align.hpp"
+#include "toby/safetensors/memory_transfer.hpp"
 #include "toby/safetensors/tensor_types.hpp"
 
 #include <cstddef>
@@ -70,12 +70,12 @@ void Arena::memcpy(std::span<const std::byte> src, DeviceType device, std::size_
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     auto* dest = static_cast<std::byte*>(base()) + offset;
 
-    detail::copy_bytes(std::span{dest, src.size()}, device_, src, device);
+    copy_bytes(std::span{dest, src.size()}, device_, src, device);
 }
 
 std::span<std::byte> Arena::alloc_from_cpu_ptr(std::span<const std::byte> in) {
     auto ret = alloc(in.size_bytes());
-    detail::copy_bytes(ret, device_, in, DeviceType::CPU);
+    copy_bytes(ret, device_, in, DeviceType::CPU);
     return ret;
 }
 
