@@ -1,4 +1,4 @@
-#include "memory_transfer.hpp"
+#include "toby/safetensors/memory_transfer.hpp"
 
 #include "toby/safetensors/tensor_types.hpp"
 
@@ -8,13 +8,13 @@
 #include <stdexcept>
 
 #if TOBY_HAVE_CUDA
-#include "cuda_exception.hpp"
+#include "toby/cuda_utils/cuda_exception.hpp"
 
 #include <cuda_runtime_api.h>
 #include <driver_types.h>
 #endif
 
-namespace toby::tensors::detail {
+namespace toby::tensors {
 void copy_bytes(std::span<std::byte> dst, DeviceType dst_device, std::span<const std::byte> src,
                 DeviceType src_device) {
     if (dst.size_bytes() < src.size_bytes()) {
@@ -49,4 +49,4 @@ void copy_bytes(std::span<std::byte> dst, DeviceType dst_device, std::span<const
     throw std::invalid_argument{"GPU not supported in this build"};
 #endif
 }
-} // namespace toby::tensors::detail
+} // namespace toby::tensors

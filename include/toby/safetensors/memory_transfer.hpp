@@ -6,7 +6,7 @@
 #include <cstddef>
 #include <span>
 
-namespace toby::tensors::detail {
+namespace toby::tensors {
 /**
  * Copy src.size_bytes() bytes; dst may be larger. Returns only after completion.
  * Throws std::invalid_argument for an undersized destination, invalid device,
@@ -17,6 +17,6 @@ namespace toby::tensors::detail {
  */
 void copy_bytes(std::span<std::byte> dst, DeviceType dst_device, std::span<const std::byte> src,
                 DeviceType src_device);
-} // namespace toby::tensors::detail
+} // namespace toby::tensors
 
 #endif

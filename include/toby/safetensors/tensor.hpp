@@ -26,6 +26,8 @@ constexpr size_t bytes_per_elem(const DataType type) {
         return 4;
     case toby::tensors::DataType::U16:
         return 2;
+    default:
+        throw std::invalid_argument{"Unhandled datatype"};
     }
 }
 
@@ -161,6 +163,15 @@ private:
  */
 Tensor u16_from_scalars(Arena& arena, std::initializer_list<const std::uint16_t> indices,
                         std::optional<std::string_view> name = {});
+// NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name)
+Tensor u16_from_scalars(Arena& arena, std::span<const std::uint16_t> scalars,
+                        std::optional<std::string_view> name = {});
+
+/** Copy float scalars into the given Arena as a rank-1 F32 tensor. */
+Tensor f32_from_scalars(Arena& arena, std::initializer_list<float> scalars,
+                        std::optional<std::string_view> name = {});
+Tensor f32_from_scalars(Arena& arena, std::span<const float> scalars,
+                        std::optional<std::string_view> name = {});
 } // namespace toby::tensors
 
 template <> struct std::formatter<toby::tensors::TensorShape> : std::formatter<std::string> {
@@ -174,6 +185,19 @@ template <> struct std::formatter<toby::tensors::TensorShape> : std::formatter<s
         }
         buf += "]";
         return std::formatter<std::string>::format(buf, ctx);
+    }
+};
+
+template <> struct std::formatter<toby::tensors::DeviceType> : std::formatter<std::string_view> {
+    auto format(const toby::tensors::DeviceType& device, std::format_context& ctx) const {
+        switch (device) {
+        case toby::tensors::DeviceType::GPU:
+            return std::formatter<std::string_view>::format("GPU", ctx);
+        case toby::tensors::DeviceType::CPU:
+            return std::formatter<std::string_view>::format("CPU", ctx);
+        }
+
+        return std::formatter<std::string_view>::format("unknown", ctx);
     }
 };
 

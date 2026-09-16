@@ -1,10 +1,10 @@
 #include "toby/safetensors/safetensors.hpp"
 
 #include "cpu_arena.hpp"
-#include "memory_transfer.hpp"
 #include "toby/safetensors/align.hpp"
 #include "toby/safetensors/arena.hpp"
 #include "toby/safetensors/file.hpp"
+#include "toby/safetensors/memory_transfer.hpp"
 #include "toby/safetensors/tensor.hpp"
 #include "toby/safetensors/tensor_types.hpp"
 
@@ -145,13 +145,36 @@ std::span<const std::byte> get_data_pointer(std::span<const std::byte> base,
 } // namespace
 
 namespace toby::tensors {
+namespace {
+template <typename T>
+Tensor from_scalars(Arena& arena, std::span<const T> scalars, DataType dtype,
+                    std::string_view name) {
+    auto bytes = std::as_bytes(scalars);
+    auto base = arena.alloc_from_cpu_ptr(bytes);
+    auto shape = TensorShape{scalars.size()};
+    return Tensor::from_ptr(name, arena.device(), dtype, base, shape);
+}
+} // namespace
+
 Tensor u16_from_scalars(Arena& arena, std::initializer_list<const std::uint16_t> indices,
                         std::optional<std::string_view> name) {
-    auto bytes = std::as_bytes(std::span{indices});
-    auto base = arena.alloc_from_cpu_ptr(bytes);
-    auto shape = TensorShape{static_cast<std::size_t>(indices.size())};
-    return Tensor::from_ptr(name.value_or("u16_from_scalar"), arena.device(), DataType::U16, base,
-                            shape);
+    return u16_from_scalars(arena, std::span<const std::uint16_t>{indices}, name);
+}
+
+// NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name)
+Tensor u16_from_scalars(Arena& arena, std::span<const std::uint16_t> indices,
+                        std::optional<std::string_view> name) {
+    return from_scalars(arena, indices, DataType::U16, name.value_or("u16_from_scalar"));
+}
+
+Tensor f32_from_scalars(Arena& arena, std::initializer_list<float> scalars,
+                        std::optional<std::string_view> name) {
+    return f32_from_scalars(arena, std::span<const float>{scalars}, name);
+}
+
+Tensor f32_from_scalars(Arena& arena, std::span<const float> scalars,
+                        std::optional<std::string_view> name) {
+    return from_scalars(arena, scalars, DataType::F32, name.value_or("f32_from_scalars"));
 }
 
 std::uint16_t Tensor::at_u16(std::initializer_list<std::size_t> indices) const {
@@ -167,7 +190,7 @@ std::uint16_t Tensor::at_u16(std::initializer_list<std::size_t> indices) const {
     auto ret_bytes = std::as_writable_bytes(std::span{&ret, 1});
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     const std::byte* src_ptr = static_cast<const std::byte*>(data_) + (sizeof(ret) * idx);
-    detail::copy_bytes(ret_bytes, DeviceType::CPU, std::span{src_ptr, sizeof(ret)}, device_);
+    copy_bytes(ret_bytes, DeviceType::CPU, std::span{src_ptr, sizeof(ret)}, device_);
     return ret;
 }
 } // namespace toby::tensors

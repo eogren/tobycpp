@@ -1,14 +1,12 @@
-#include "gpu_arena.hpp"
+#include "toby/cuda_utils/cuda_alloc.hpp"
 
-#include "cuda_exception.hpp"
+#include "toby/cuda_utils/cuda_exception.hpp"
 
 #include <cstddef>
 #include <cstdlib>
 #include <cuda_runtime_api.h>
 
-using toby::cuda::throw_if_error;
-
-namespace toby::tensors::detail {
+namespace toby::cuda {
 CudaAlloc CudaAlloc::anonymous(std::size_t len) {
     void* ptr = nullptr;
     auto err = cudaMalloc(&ptr, len);
@@ -24,4 +22,4 @@ CudaAlloc::~CudaAlloc() {
     }
 }
 
-} // namespace toby::tensors::detail
+} // namespace toby::cuda
