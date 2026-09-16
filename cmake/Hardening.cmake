@@ -61,7 +61,18 @@ endif()
 
 # The macro is libc++-specific; libstdc++ ignores it silently, which would make
 # this look enabled while doing nothing. Say so rather than pretend.
-if(NOT (CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
+include(CheckCXXSourceCompiles)
+# Recheck when an existing build switches standard libraries.
+unset(TOBY_USES_LIBCXX CACHE)
+check_cxx_source_compiles(
+  "#include <version>
+   #ifndef _LIBCPP_VERSION
+   #error Not libc++
+   #endif
+   int main() { return 0; }"
+  TOBY_USES_LIBCXX
+)
+if(NOT TOBY_USES_LIBCXX)
   if(NOT _toby_hardening STREQUAL "none")
     message(
       WARNING

@@ -48,13 +48,9 @@ if(NOT CMAKE_CUDA_ARCHITECTURES)
   )
 endif()
 
-# nvcc's default host compiler (found by probing PATH/cc) is whatever system
-# compiler it ships expecting -- typically g++, never libc++-aware. Every host
-# executable in this tree links with -stdlib=libc++ (see the clang presets), and
-# that flag reaches nvcc's link step too since CMAKE_EXE_LINKER_FLAGS is global
-# and not language-scoped. Point nvcc at the same Clang the rest of the project
-# uses so its host link step understands -stdlib=libc++ instead of erroring out
-# on an unrecognized g++ flag.
+# Use the same host compiler for C++ and CUDA. The CUDA presets select
+# libstdc++ for C++ sources, matching NVCC's Linux host standard library.
+# Clang also understands the presets' global -stdlib linker flag.
 if(NOT DEFINED CMAKE_CUDA_HOST_COMPILER AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   set(CMAKE_CUDA_HOST_COMPILER "${CMAKE_CXX_COMPILER}" CACHE FILEPATH "Host compiler used by nvcc")
 endif()
@@ -89,6 +85,6 @@ message(
   "architectures=${CMAKE_CUDA_ARCHITECTURES}"
 )
 
-# Keep the boundary between nvcc-compiled code and the libc++ C++23 host code
+# Keep the boundary between nvcc-compiled code and the C++23 host code
 # narrow (plain-C launcher functions and CUDA runtime types), so nvcc has to
 # parse as little heavy C++ template code as possible.
