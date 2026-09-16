@@ -59,6 +59,8 @@ These tests are omitted when their prerequisites are missing.
 
 GPU support is off by default. The `clang-cuda` and `clang-cuda-release`
 presets enable it and require `nvcc`, the CUDA toolkit, and an NVIDIA driver.
+They use Clang 20 with libstdc++ (including its development headers) to match
+NVCC's host standard library, and disable libc++-specific hardening.
 Use `-DCUDAToolkit_ROOT=...` to specify a toolkit location.
 
 ```bash

@@ -2,6 +2,38 @@
 
 See the [README](../README.md#cuda) for prerequisites and a basic build.
 
+## C++ standard library
+
+The Linux CUDA presets use Clang 20 with libstdc++ for host C++ and CUDA
+sources. NVIDIA supports libstdc++ as NVCC's Linux host standard library;
+using it throughout the build keeps shared C++ types compatible. Other Clang
+presets continue to use libc++.
+
+These presets disable `TOBY_HARDENING`, which configures libc++-specific
+checks. C++ sources still use C++23; availability of library features depends
+on the installed libstdc++ version.
+
+The current code needs libstdc++ 14 or newer for `std::ranges::to` and `<print>`.
+See the
+[libstdc++ feature status](https://gcc.gnu.org/onlinedocs/libstdc++/manual/status.html).
+Install the matching development headers and runtime; Clang remains the
+compiler. Both Clang and NVCC's host compilation must select the same library.
+
+On Ubuntu, install the GCC 14 toolchain (including its libstdc++ headers):
+
+```bash
+sudo apt-get install g++-14
+```
+
+After switching an existing CUDA build from libc++, reconfigure and rebuild
+all targets, including dependencies:
+
+```bash
+cmake --preset clang-cuda --fresh
+cmake --build --preset clang-cuda
+ctest --preset clang-cuda
+```
+
 ## Build-time analysis
 
 To also run clang-tidy on first-party C++ sources during compilation, use:

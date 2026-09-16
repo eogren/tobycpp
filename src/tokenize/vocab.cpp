@@ -484,7 +484,8 @@ Vocab Vocab::load_gpt2(const Gpt2VocabFiles& files) {
                 vocab_bytes.push_back(*byte);
             });
 
-            auto it = ret.all_tokens_.insert_range(ret.all_tokens_.end(), vocab_bytes);
+            auto it = ret.all_tokens_.insert(ret.all_tokens_.end(), vocab_bytes.begin(),
+                                             vocab_bytes.end());
             auto byte_range = ByteRange{
                 .offset = static_cast<std::size_t>(std::distance(ret.all_tokens_.begin(), it)),
                 .length = vocab_bytes.size(),
