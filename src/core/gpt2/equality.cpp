@@ -8,6 +8,7 @@
 #include <format>
 #include <stdexcept>
 
+using toby::tensors::DataType;
 using toby::tensors::DeviceType;
 using toby::tensors::Tensor;
 
@@ -30,9 +31,15 @@ template <typename T> bool tensors_equal_cpu_compare(const T* t1, const T* t2, s
  */
 bool tensors_equal_cpu(const Tensor& t1, const Tensor& t2) {
     switch (t1.dtype()) {
-    case toby::tensors::DataType::U16: {
+    case DataType::U16: {
         const auto* p1 = static_cast<const std::uint16_t*>(t1.data());
         const auto* p2 = static_cast<const std::uint16_t*>(t2.data());
+
+        return tensors_equal_cpu_compare(p1, p2, t1.shape().numel());
+    }
+    case DataType::F32: {
+        const auto* p1 = static_cast<const float*>(t1.data());
+        const auto* p2 = static_cast<const float*>(t2.data());
 
         return tensors_equal_cpu_compare(p1, p2, t1.shape().numel());
     }
