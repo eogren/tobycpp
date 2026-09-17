@@ -57,34 +57,43 @@ __global__ void tensors_equal_tmpl(int* out, const T* t1, const T* t2, std::size
 
 namespace toby::gpt2::detail {
 bool tensors_equal_gpu(const Tensor& t1, const Tensor& t2) {
+
+    CudaAlloc alloc = CudaAlloc::anonymous(sizeof(int));
+    int* out = static_cast<int*>(alloc.addr());
+    int ret{1};
+
+    toby::tensors::copy_bytes(std::as_writable_bytes(std::span{out, 1}), DeviceType::GPU,
+                              std::as_bytes(std::span{&ret, 1}), DeviceType::CPU);
+
+    // todo - maybe could be smarter about this later
+    auto num_blocks = (t1.shape().numel() / 256) + 1;
+
     switch (t1.dtype()) {
     case toby::tensors::DataType::U16: {
         const auto* p1 = static_cast<const std::uint16_t*>(t1.data());
         const auto* p2 = static_cast<const std::uint16_t*>(t2.data());
 
-        CudaAlloc alloc = CudaAlloc::anonymous(sizeof(int));
-        int* out = static_cast<int*>(alloc.addr());
-        int ret{1};
-
-        toby::tensors::copy_bytes(std::as_writable_bytes(std::span{out, 1}), DeviceType::GPU,
-                                  std::as_bytes(std::span{&ret, 1}), DeviceType::CPU);
-
-        // todo - maybe could be smarter about this later
-        auto num_blocks = (t1.shape().numel() / 256) + 1;
-
-        /// launch kernel (p1, p2, t1.shape().numel());
         tensors_equal_tmpl<std::uint16_t><<<num_blocks, 256>>>(out, p1, p2, t1.shape().numel());
-        toby::cuda::throw_if_error("kernel_submit", cudaGetLastError());
+        break;
+    }
+    case toby::tensors::DataType::F32: {
+        const auto* p1 = static_cast<const float*>(t1.data());
+        const auto* p2 = static_cast<const float*>(t2.data());
 
-        // 3. Force the host CPU to wait for the GPU to finish execution
-        toby::cuda::throw_if_error("synchronize", cudaDeviceSynchronize());
-
-        toby::tensors::copy_bytes(std::as_writable_bytes(std::span{&ret, 1}), DeviceType::CPU,
-                                  std::as_bytes(std::span{out, 1}), DeviceType::GPU);
-        return (ret != 0);
+        tensors_equal_tmpl<float><<<num_blocks, 256>>>(out, p1, p2, t1.shape().numel());
+        break;
     }
     default:
         throw std::invalid_argument{"unsupported type"};
     }
+
+    // 3. Force the host CPU to wait for the GPU to finish execution
+    toby::cuda::throw_if_error("kernel_submit", cudaGetLastError());
+
+    toby::cuda::throw_if_error("synchronize", cudaDeviceSynchronize());
+
+    toby::tensors::copy_bytes(std::as_writable_bytes(std::span{&ret, 1}), DeviceType::CPU,
+                              std::as_bytes(std::span{out, 1}), DeviceType::GPU);
+    return (ret != 0);
 }
 } // namespace toby::gpt2::detail
